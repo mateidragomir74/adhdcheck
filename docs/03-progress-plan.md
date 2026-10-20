@@ -84,7 +84,7 @@ Status values: `todo`, `doing`, `done`. Update in the same PR that changes the s
 | FR-50 | Emails without result data | R4 | Should | todo | |
 | FR-55 | Demo seed, 4 weeks | R3 with R2 | Must | doing | https://github.com/mateidragomir74/adhdcheck/pull/7, https://github.com/mateidragomir74/adhdcheck/pull/8 (synthetic scores until the scoring rules exist; packages/scoring is a stub) |
 | FR-56 | Reset demo button | R3 | Should | doing | API: https://github.com/mateidragomir74/adhdcheck/pull/7; button: https://github.com/mateidragomir74/adhdcheck/pull/14; rehearsal script: https://github.com/mateidragomir74/adhdcheck/pull/12 |
-| FR-60 | Storm Watch mini-game | R1 | Should | todo | |
+| FR-60 | Storm Watch mini-game | R1 | Should | doing | 3D Go/No-Go distraction task (MOXO d-CPT) with visual & auditory cues |
 | FR-61 | Star Path mini-game | R1 | Could | doing | https://github.com/mateidragomir74/adhdcheck/pull/11 |
 | FR-62 | Bridge Wait mini-game | R1 | Could | doing | https://github.com/mateidragomir74/adhdcheck/pull/3 |
 | FR-63 | Treasure Choice mini-game | R1 | Could | todo | |

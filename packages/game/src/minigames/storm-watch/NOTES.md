@@ -1,0 +1,22 @@
+# Storm Watch (FR-60) Design & Implementation Notes
+
+- **Specification**: FR-60 in `docs/02-specification-cahier-des-charges.md` and research in `research/04-game-design-symptom-mapping.md` section 5.
+- **Constructs Observed**:
+  - IA8 (easily distracted): Distractor cost in Block B (crossing cartoon birds and rolling thunder) vs Block A (calm).
+  - IA3 (does not seem to listen): Auditory-cued go trials (25% cued by synthesized owl hoot instead of visual light).
+- **Trial Structure**:
+  - 2 Blocks x 40 trials = 80 total.
+  - Go probability = 0.8 (32 Go + 8 No-Go per block).
+  - In each block of 32 Go trials: 24 visual fireflies, 8 audio-cued owl hoots.
+  - Fixed counts shuffled via seeded PRNG (`mulberry32`).
+  - Block order counterbalanced by seed.
+- **Timing & Precision**:
+  - Stimulus onset measured by rAF timestamp of the drawing frame.
+  - Response captured via native `pointerdown` `event.timeStamp` (only primary pointers).
+  - Never uses `click`.
+  - Stimulus duration: 500 ms; ISI: 900-1500 ms uniform.
+- **Child-Friendly UX (SKILL.md)**:
+  - No failure sounds or red screens.
+  - Same pleasant two-tone chime for every hit.
+  - 4 practice trials with Luma guidance before scored trials.
+  - Celebratory completion screen.

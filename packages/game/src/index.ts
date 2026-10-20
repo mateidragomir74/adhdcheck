@@ -36,3 +36,4 @@ export * from "./minigames/bridge-wait";
 export * from "./minigames/treasure-choice";
 export * from "./minigames/star-path";
 export * from "./minigames/route-planner";
+export * from "./minigames/storm-watch";
