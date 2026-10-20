@@ -18,8 +18,13 @@ export async function POST(request: Request) {
   return handleCheckout(request, {
     getParentId: async () => (await supabase.auth.getClaims()).data?.claims.sub ?? null,
     priceId: process.env.STRIPE_PRICE_ID,
+    siteUrl: process.env.SITE_URL,
     getSubscriptionStatus: (parentId) => getSubscriptionStatus(admin, parentId),
     getOrCreateCustomer: (parentId) => getOrCreateCustomer(admin, stripe, parentId),
+    hasLiveSubscription: async (customer) => {
+      const { data } = await stripe.subscriptions.list({ customer, status: "all", limit: 20 });
+      return data.some((s) => s.status === "active" || s.status === "trialing");
+    },
     createCheckoutSession: ({ customer, priceId, parentId, successUrl, cancelUrl }) =>
       stripe.checkout.sessions.create({
         mode: "subscription",

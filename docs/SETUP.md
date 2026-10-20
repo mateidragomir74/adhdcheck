@@ -61,6 +61,7 @@ Copy `.env.example` to `apps/web/.env.local` (gitignored) and fill the values th
 | `STRIPE_SECRET_KEY` | server only, Stripe test mode |
 | `STRIPE_WEBHOOK_SECRET` | server only |
 | `STRIPE_PRICE_ID` | server only: the test-mode recurring price used by `POST /api/stripe/checkout` (product and price: decision D-05) |
+| `SITE_URL` | server only: base of the Stripe return URLs (for example `https://adhdcheck-xi.vercel.app`); unset in local dev, where the request origin is used |
 | `RESEND_API_KEY` | server only |
 | `DEMO_PARENT_EMAIL` | server only: the account that may use Reset demo (`POST /api/demo/reset`) |
 | `GAME_HARNESS` | server only: set to `1` to serve the dev game pages under `/play` (bridge-wait, star-path, treasure-choice, route-planner) in production; read at build, off by default |
@@ -91,7 +92,7 @@ The names follow the usual convention of each provider; confirm them against the
 | @supabase/supabase-js | 2.118.0 | not added yet | MIT | npm registry |
 | @mediapipe/tasks-vision | 1.1.1 | not added yet | Apache-2.0 | npm registry |
 | @ricky0123/vad-web | 0.0.31 | not added yet | ISC | npm registry |
-| stripe | 23.0.0 | not added yet | MIT | npm registry |
+| stripe | 23.0.0 | `^22.6.2` (apps/web) | MIT | npm registry |
 | resend | 6.34.1 | not added yet | MIT | npm registry |
 | qrcode | 1.5.4 | not added yet | MIT | npm registry |
 | pnpm | 12.14.0 | not used | MIT | npm registry |

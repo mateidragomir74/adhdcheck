@@ -13,12 +13,21 @@ function isJson(request: Request) {
   return (request.headers.get("content-type") ?? "").toLowerCase().startsWith("application/json");
 }
 
+// Base of the Stripe return URLs: SITE_URL when set (production), else the request origin (local dev).
+function baseUrl(request: Request, siteUrl: string | undefined) {
+  return (siteUrl || new URL(request.url).origin).replace(/\/+$/, "");
+}
+
 type CheckoutDeps = {
   getParentId(): Promise<string | null>;
   priceId: string | undefined;
+  siteUrl?: string;
   // Stored subscription status of the parent (subscriptions table), null when there is none.
   getSubscriptionStatus(parentId: string): Promise<string | null>;
   getOrCreateCustomer(parentId: string): Promise<string>;
+  // Whether Stripe already holds an active or trialing subscription for the customer. Covers the gap before
+  // the webhook has written the subscriptions row (a second checkout right after the first one).
+  hasLiveSubscription(customer: string): Promise<boolean>;
   createCheckoutSession(input: {
     customer: string;
     priceId: string;
@@ -39,12 +48,13 @@ export async function handleCheckout(request: Request, deps: CheckoutDeps): Prom
     return fail(503, "billing_not_configured");
   }
 
-  const origin = new URL(request.url).origin;
+  const origin = baseUrl(request, deps.siteUrl);
   try {
     // One subscription per parent: an active or trialing one is managed in the portal, never doubled.
     const stored = await deps.getSubscriptionStatus(parentId);
     if (stored === "active" || stored === "trialing") return fail(409, "already_subscribed");
     const customer = await deps.getOrCreateCustomer(parentId);
+    if (await deps.hasLiveSubscription(customer)) return fail(409, "already_subscribed");
     const session = await deps.createCheckoutSession({
       customer,
       priceId: deps.priceId,
@@ -62,6 +72,7 @@ export async function handleCheckout(request: Request, deps: CheckoutDeps): Prom
 
 type PortalDeps = {
   getParentId(): Promise<string | null>;
+  siteUrl?: string;
   getCustomer(parentId: string): Promise<string | null>;
   createPortalSession(input: { customer: string; returnUrl: string }): Promise<{ url: string }>;
 };
@@ -75,7 +86,7 @@ export async function handlePortal(request: Request, deps: PortalDeps): Promise<
   try {
     const customer = await deps.getCustomer(parentId);
     if (!customer) return fail(404, "no_subscription");
-    const session = await deps.createPortalSession({ customer, returnUrl: `${new URL(request.url).origin}/dashboard` });
+    const session = await deps.createPortalSession({ customer, returnUrl: `${baseUrl(request, deps.siteUrl)}/dashboard` });
     return Response.json({ url: session.url });
   } catch {
     console.error("[stripe] portal failed", { error: "billing_unavailable" });

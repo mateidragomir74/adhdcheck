@@ -16,16 +16,52 @@ function post(path: string, body = "{}", headers: Record<string, string> = { "co
 afterEach(() => vi.restoreAllMocks());
 
 describe("POST /api/stripe/checkout (FR-45)", () => {
-  function deps({ parentId = PARENT as string | null, priceId = PRICE, status = null as string | null } = {}) {
+  function deps({
+    parentId = PARENT as string | null,
+    priceId = PRICE,
+    status = null as string | null,
+    stripeActive = false,
+    siteUrl = undefined as string | undefined,
+  } = {}) {
     const getOrCreateCustomer = vi.fn().mockResolvedValue(CUSTOMER);
     const createCheckoutSession = vi.fn().mockResolvedValue({ url: "https://checkout.example.test/s" });
     const getSubscriptionStatus = vi.fn().mockResolvedValue(status);
+    const hasLiveSubscription = vi.fn().mockResolvedValue(stripeActive);
     return {
-      d: { getParentId: async () => parentId, priceId, getSubscriptionStatus, getOrCreateCustomer, createCheckoutSession },
+      d: {
+        getParentId: async () => parentId,
+        priceId,
+        siteUrl,
+        getSubscriptionStatus,
+        getOrCreateCustomer,
+        hasLiveSubscription,
+        createCheckoutSession,
+      },
       getOrCreateCustomer,
+      hasLiveSubscription,
       createCheckoutSession,
     };
   }
+
+  it("answers 409 already_subscribed when Stripe has a live subscription the webhook has not stored yet", async () => {
+    const { d, createCheckoutSession, hasLiveSubscription } = deps({ status: null, stripeActive: true });
+    const res = await handleCheckout(post("/api/stripe/checkout"), d);
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({ error: "already_subscribed" });
+    expect(hasLiveSubscription).toHaveBeenCalledWith(CUSTOMER);
+    expect(createCheckoutSession).not.toHaveBeenCalled();
+  });
+
+  it("builds the return URLs from siteUrl when it is set, not from the request host", async () => {
+    const { d, createCheckoutSession } = deps({ siteUrl: "https://app.example.test/" });
+    expect((await handleCheckout(post("/api/stripe/checkout"), d)).status).toBe(200);
+    expect(createCheckoutSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        successUrl: "https://app.example.test/dashboard?paid=1",
+        cancelUrl: "https://app.example.test/dashboard",
+      }),
+    );
+  });
 
   it.each(["active", "trialing"])("answers 409 already_subscribed when the stored status is %s", async (status) => {
     const { d, createCheckoutSession, getOrCreateCustomer } = deps({ status });
@@ -87,10 +123,16 @@ describe("POST /api/stripe/checkout (FR-45)", () => {
 });
 
 describe("POST /api/stripe/portal (FR-46)", () => {
-  function deps({ parentId = PARENT as string | null, customer = CUSTOMER as string | null } = {}) {
+  function deps({ parentId = PARENT as string | null, customer = CUSTOMER as string | null, siteUrl = undefined as string | undefined } = {}) {
     const createPortalSession = vi.fn().mockResolvedValue({ url: "https://portal.example.test/p" });
-    return { d: { getParentId: async () => parentId, getCustomer: async () => customer, createPortalSession }, createPortalSession };
+    return { d: { getParentId: async () => parentId, siteUrl, getCustomer: async () => customer, createPortalSession }, createPortalSession };
   }
+
+  it("returns to siteUrl when it is set", async () => {
+    const { d, createPortalSession } = deps({ siteUrl: "https://app.example.test" });
+    expect((await handlePortal(post("/api/stripe/portal"), d)).status).toBe(200);
+    expect(createPortalSession).toHaveBeenCalledWith({ customer: CUSTOMER, returnUrl: "https://app.example.test/dashboard" });
+  });
 
   it("opens the portal for the parent's customer, returning to the dashboard", async () => {
     const { d, createPortalSession } = deps();
