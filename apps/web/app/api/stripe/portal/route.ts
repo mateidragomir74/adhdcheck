@@ -17,6 +17,7 @@ export async function POST(request: Request) {
   const supabase = await createClient();
   return handlePortal(request, {
     getParentId: async () => (await supabase.auth.getClaims()).data?.claims.sub ?? null,
+    siteUrl: process.env.SITE_URL,
     getCustomer: (parentId) => getCustomer(admin, parentId),
     createPortalSession: ({ customer, returnUrl }) => stripe.billingPortal.sessions.create({ customer, return_url: returnUrl }),
   });
