@@ -53,6 +53,8 @@ export interface SceneOptions {
   /** Created and resumed by the play page inside its start tap; the game uses it instead of making its own. */
   audioContext?: AudioContext;
   onComplete?: (metrics: SessionMetrics) => void;
+  /** Called once, in a frame, when the first calibration hit is recorded: from then on endEarly() yields valid metrics. */
+  onCanEndEarly?: () => void;
   /** endEarly() was called but nothing valid can be built (no calibration firefly tapped yet): no metrics. */
   onUnusable?: () => void;
   onError?: (err: unknown) => void;
@@ -176,6 +178,7 @@ export function createLanternWatchScene(parent: HTMLElement, opts: SceneOptions)
   let nextFirework = 0;
   let happyUntil = 0;
   let completeAt = -1;
+  let canEndSignalled = false;
   let endRequested = false; // endEarly(): handled in the next frame, where the frame timestamp is known
   let endedEarly = false; // the result is handed back at once, with no celebration
   let metrics: SessionMetrics | null = null;
@@ -508,6 +511,10 @@ export function createLanternWatchScene(parent: HTMLElement, opts: SceneOptions)
 
     // 1. Measurement state machine. May light a lantern for this very frame.
     runner.frame(ts);
+    if (!canEndSignalled && runner.canEndEarly()) {
+      canEndSignalled = true;
+      opts.onCanEndEarly?.();
+    }
     if (endRequested) {
       endRequested = false;
       const partial = built || metrics ? null : runner.endEarly(ts);

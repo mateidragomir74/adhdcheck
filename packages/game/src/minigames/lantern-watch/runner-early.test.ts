@@ -120,3 +120,33 @@ describe("LanternWatchRunner.endEarly", () => {
     expect(d.r.endEarly(d.ts + 1)).toBeNull();
   });
 });
+
+// I-1: the "Next game" button is shown only once ending early can produce valid metrics (a calibration hit is recorded).
+describe("LanternWatchRunner.canEndEarly", () => {
+  it("is false before the first calibration hit, in the intro, the instruction and the calibration round", () => {
+    const intro = new LanternWatchRunner({ task: DEFAULT_TASK, seed: 42, anticipationMs: null });
+    expect(intro.canEndEarly()).toBe(false);
+    const instruction = drive((r) => r.state === "calib-intro");
+    expect(instruction.r.canEndEarly()).toBe(false);
+    const noTaps = drive((r) => r.state === "calib" && r.current()?.taskIndex === 5 && r.current()?.onset != null, { tapCalibration: false });
+    expect(noTaps.r.state).toBe("calib");
+    expect(noTaps.r.canEndEarly()).toBe(false);
+  });
+
+  it("becomes true exactly when endEarly can return valid data, and then stays true until the run is frozen", () => {
+    const d = drive((r) => r.canEndEarly());
+    expect(d.r.canEndEarly()).toBe(true);
+    const data = d.r.endEarly(d.ts);
+    expect(data).not.toBeNull();
+    expect(data?.trials.some((t) => t.type === "calibration" && t.outcome === "hit")).toBe(true);
+    expect(d.r.canEndEarly()).toBe(false); // done
+  });
+
+  it("is true after calibration (practice and task states) and false once the run completed", () => {
+    const mid = drive((r) => r.state === "trials" && r.current()?.taskIndex === 2 && r.current()?.onset != null);
+    expect(mid.r.canEndEarly()).toBe(true);
+    const full = drive(() => false);
+    expect(full.completed()).not.toBeNull();
+    expect(full.r.canEndEarly()).toBe(false);
+  });
+});

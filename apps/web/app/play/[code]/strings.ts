@@ -39,6 +39,13 @@ export const NEXT_STRINGS = {
   ro: { label: "Jocul următor", aria: "Treci la jocul următor" },
 } as const;
 
-export function nextGameText(lang: keyof typeof NEXT_STRINGS) {
-  return NEXT_STRINGS[lang];
+// On the last game the button ends the session and the result is saved, so it says Finish. TODO (Person 4, texts owner):
+// confirm both languages; the "ro" lines are an unproofread draft.
+export const FINISH_STRINGS = {
+  en: { label: "Finish", aria: "Finish the last game" },
+  ro: { label: "Termină", aria: "Termină ultimul joc" },
+} as const;
+
+export function nextGameText(lang: keyof typeof NEXT_STRINGS, last = false) {
+  return last ? FINISH_STRINGS[lang] : NEXT_STRINGS[lang];
 }

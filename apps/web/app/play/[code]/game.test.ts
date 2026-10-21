@@ -8,7 +8,7 @@ const OFF = { camera: false, microphone: false };
 const el = () => ({ textContent: "" as string | null, className: "absolute inset-0", replaceChildren() {} }) as unknown as HTMLElement;
 const tick = () => new Promise((r) => setTimeout(r, 0));
 
-type Opts = { onComplete?: (m: SessionMetrics) => void; onUnusable?: () => void; onError?: (e: unknown) => void };
+type Opts = { onComplete?: (m: SessionMetrics) => void; onUnusable?: () => void; onCanEndEarly?: () => void; onError?: (e: unknown) => void };
 function fakeMount() {
   const destroy = vi.fn();
   const endEarly = vi.fn();
@@ -137,5 +137,43 @@ describe("createSessionGame endEarly (Next game)", () => {
     run.destroy();
     run.endEarly?.();
     expect(endEarly).not.toHaveBeenCalled();
+  });
+});
+
+// I-1: the Next game button of Lantern Watch appears only when the game says ending early gives valid metrics.
+describe("createSessionGame canEndEarly (I-1)", () => {
+  it("resolves only when the game reports a calibration hit, and never when it fails to mount", async () => {
+    const { mount, opts } = fakeMount();
+    const run = createSessionGame(async () => mount)(el(), CHILD, OFF);
+    let ready = false;
+    void run.canEndEarly?.then(() => (ready = true));
+    await tick();
+    await tick();
+    expect(run.canEndEarly).toBeDefined();
+    expect(ready).toBe(false);
+    opts().onCanEndEarly?.();
+    await tick();
+    expect(ready).toBe(true);
+
+    const failing = createSessionGame(async () => {
+      throw new Error("no WebGL");
+    })(el(), CHILD, OFF);
+    let failedReady = false;
+    void failing.canEndEarly?.then(() => (failedReady = true));
+    await tick();
+    await tick();
+    expect(failedReady).toBe(false);
+  });
+
+  it("does not resolve after the page left", async () => {
+    const { mount, opts } = fakeMount();
+    const run = createSessionGame(async () => mount)(el(), CHILD, OFF);
+    let ready = false;
+    void run.canEndEarly?.then(() => (ready = true));
+    await tick();
+    run.destroy();
+    opts().onCanEndEarly?.();
+    await tick();
+    expect(ready).toBe(false);
   });
 });

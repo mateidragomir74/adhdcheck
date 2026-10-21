@@ -411,13 +411,24 @@ export class LanternWatchRunner {
    * calibration hit), when the run is over already or was ended already. The run is frozen afterwards (state "done"),
    * and onComplete is not called: the caller owns the result.
    */
-  endEarly(ts: number): RunData | null {
+  /** Records that ending early would keep: the calibration round in progress, or everything recorded after it. */
+  private endEarlySource(): Trial[] | null {
     if (this.state === "done") return null;
     const inCalibration = this.state === "calib";
-    const source = inCalibration ? this.calibRecords : this.records;
     const afterCalibration = this.state !== "intro" && this.state !== "calib-intro" && this.state !== "calib-practice" && !inCalibration;
     if (!(inCalibration || afterCalibration)) return null;
-    if (!source.some((t) => t.type === "calibration" && t.outcome === "hit")) return null;
+    const source = inCalibration ? this.calibRecords : this.records;
+    return source.some((t) => t.type === "calibration" && t.outcome === "hit") ? source : null;
+  }
+
+  /** True when endEarly() would return valid data: a calibration hit is recorded (a closed trial) and the run is not over. */
+  canEndEarly(): boolean {
+    return this.endEarlySource() !== null;
+  }
+
+  endEarly(ts: number): RunData | null {
+    const source = this.endEarlySource();
+    if (!source) return null;
     const data: RunData = {
       trials: source.map((t) => ({ ...t })),
       off_target_taps: this.offTarget.map((o) => ({ ...o })),

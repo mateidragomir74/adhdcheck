@@ -18,7 +18,9 @@ import { PLAY_STRINGS } from "./strings";
 // trials already recorded (a partial session, which the scorer rates as insufficient data when it is short), or with
 // null when nothing valid can be built yet (SessionMetrics v1 needs a calibration median, so at least one calibration
 // firefly must have been tapped). Null means: nothing to upload.
-export type SessionGameRun = { promise: Promise<SessionMetrics | null>; destroy(): void; endEarly?(): void };
+// canEndEarly resolves when the first calibration hit is recorded: from then on endEarly() yields valid metrics, and only
+// then does the chain show its "Next game" button over Lantern Watch. It never resolves if the game cannot start.
+export type SessionGameRun = { promise: Promise<SessionMetrics | null>; destroy(): void; endEarly?(): void; canEndEarly?: Promise<void> };
 // audioContext: created and resumed by the page inside the start tap (lib/audio-unlock.ts); the game reuses it.
 export type SessionGame = (el: HTMLElement, childId: string, consent: Consent, audioContext?: AudioContext) => SessionGameRun;
 
@@ -32,6 +34,7 @@ type MountOptions = {
   trialsPerBlock?: number;
   onComplete: (metrics: SessionMetrics) => void;
   onUnusable?: () => void;
+  onCanEndEarly?: () => void;
   onError: () => void;
 };
 export type MountLanternWatch = (el: HTMLElement, opts: MountOptions) => Promise<Handle>;
@@ -59,6 +62,8 @@ export function createSessionGame(loadMount: () => Promise<MountLanternWatch>): 
     let destroyed = false;
     let endRequested = false;
     let resolveNull: () => void = () => {};
+    let signalCanEnd: () => void = () => {};
+    const canEndEarly = new Promise<void>((resolve) => (signalCanEnd = resolve));
     const stop = () => {
       destroyed = true;
       cancel?.();
@@ -87,6 +92,9 @@ export function createSessionGame(loadMount: () => Promise<MountLanternWatch>): 
             handle = undefined;
             if (!destroyed) resolve(metrics);
           },
+          onCanEndEarly: () => {
+            if (!destroyed) signalCanEnd();
+          },
           onUnusable: () => {
             handle?.destroy();
             handle = undefined;
@@ -102,6 +110,7 @@ export function createSessionGame(loadMount: () => Promise<MountLanternWatch>): 
     });
     return {
       promise,
+      canEndEarly,
       destroy: stop,
       endEarly: () => {
         if (destroyed || endRequested) return;

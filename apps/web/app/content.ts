@@ -114,7 +114,7 @@ const ro = {
     intro: "Astăzi aplicația se adresează părinților. Ne propunem să ajungem și la cei care îi însoțesc.",
     items: [
       { who: "Părinții copiilor de 6–12 ani", why: "Ei decid dacă cer o evaluare." },
-      { who: "Asociațiile pentru ADHD", why: "În fiecare țară în care facem aplicația cunoscută. Ele ajung la familii și le sfătuiesc." },
+      { who: "Asociațiile pentru ADHD", why: "În fiecare țară în care ne propunem să oferim aplicația. Ele ajung la familii și le sfătuiesc." },
       { who: "Profesorii", why: "Ei observă la clasă probleme de atenție." },
       { who: "Asistenții medicali", why: "Ne propunem ca, înainte de consult, copiii să se joace în sala de așteptare, ca medicul să primească o primă orientare și să câștige timp." },
       { who: "Medicii de familie", why: "Ne propunem o primă orientare înainte de trimiterea la specialist." },
@@ -333,7 +333,7 @@ const en: Dict = {
     intro: "Today the app is for parents. We plan to reach the people who support them too.",
     items: [
       { who: "Parents of children aged 6–12", why: "They decide whether to seek an assessment." },
-      { who: "ADHD associations", why: "In each country where we advertise the app. They reach and advise families." },
+      { who: "ADHD associations", why: "In each country where we plan to offer the app. They reach and advise families." },
       { who: "Teachers", why: "They notice attention problems in class." },
       { who: "Nurses", why: "We plan for children to play in the waiting room before the visit, so the doctor gets a first orientation and saves time." },
       { who: "GPs (general practitioners)", why: "We plan a first orientation before a referral." },

@@ -53,6 +53,14 @@ describe("landing page: the five target groups (pitch/icp-and-go-to-market.md, I
       expect(en).toContain(phrase);
   });
 
+  it("M-4: the associations line is a plan (where we plan to offer the app), not a claim that we advertise today", () => {
+    expect(content.en.audience.items[1]?.why).toMatch(/where we plan to offer the app/);
+    expect(content.en.audience.items[1]?.why).not.toMatch(/advertise/i);
+    expect(content.ro.audience.items[1]?.why).toMatch(/ne propunem să oferim aplicația/);
+    expect(content.ro.audience.items[1]?.why).not.toMatch(/cunoscută/);
+    expect(md).toContain("In each country we advertise in"); // the source line the plan wording rests on
+  });
+
   it("the page says parents come first and that other uses come later, as the md answers the intended-purpose question", () => {
     expect(md).toContain("Parents first; professional and school use come later");
     expect(content.en.audience.note).toMatch(/Parents come first/);
@@ -94,6 +102,17 @@ describe("landing page: the go-to-market is written as a plan, never as a fact",
     expect(findPresentTenseRegulatory(["Pilot in development. Not CE marked yet."])).toEqual([]);
     for (const lang of ["ro", "en"] as const) expect(findPresentTenseRegulatory(strings(content[lang]))).toEqual([]);
     expect(findPresentTenseRegulatory([renderedText()])).toEqual([]);
+  });
+
+  it("M-7: a negation must come BEFORE the status and govern it; a plan marker must come before it too (the gate can fail on these)", () => {
+    expect(findPresentTenseRegulatory(["It is CE marked, not a toy."])).not.toEqual([]);
+    expect(findPresentTenseRegulatory(["No doubt: it is ISO 13485 certified."])).not.toEqual([]);
+    expect(findPresentTenseRegulatory(["Este marcat CE, nu un jucărie."])).not.toEqual([]);
+    expect(findPresentTenseRegulatory(["ADHDCheck is CE marked and we plan more."])).not.toEqual([]);
+    expect(findPresentTenseRegulatory(["It is not CE marked yet."])).toEqual([]);
+    expect(findPresentTenseRegulatory(["Nu are încă marcaj CE."])).toEqual([]);
+    expect(findPresentTenseRegulatory(["Pilot, fără marcaj CE."])).toEqual([]);
+    expect(findPresentTenseRegulatory(["We expect the app to be a class IIa medical device."])).toEqual([]);
   });
 
   it("claims no existing partnership, in any sentence of either language or of the rendered page", () => {
@@ -162,6 +181,9 @@ describe("landing page: metadata claims nothing the body does not say", () => {
   it("the check can fail: a planted claim the body never makes is reported", () => {
     const body = renderedText();
     expect(metadataClaimsMissing(["De la 15K EUR pentru clasa I."], body)).not.toEqual([]);
+    // M-7: whole words, not a five-letter prefix: "validat" must not be waved through by "validare"
+    expect(metadataClaimsMissing(["Validat clinic."], body)).not.toEqual([]);
+    expect(metadataClaimsMissing(["Un joc liniștit pentru copii."], body)).toEqual([]); // an inflection of a body word ("liniștită") still counts
     expect(metadataClaimsMissing(["Certificat ISO 13485, validat clinic de 40 de medici."], body).length).toBeGreaterThan(0);
     expect(metadataClaimsMissing(["Un joc de 10–15 minute pentru copii de 6–12 ani."], body)).toEqual([]);
   });

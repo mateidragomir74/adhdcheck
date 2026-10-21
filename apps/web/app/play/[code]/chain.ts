@@ -24,11 +24,11 @@ import { nextGameText, transitionText } from "./strings";
 // returns something unusable is skipped and recorded, and the chain goes on. Every game, Lantern Watch included, shows
 // a small visible "Next game" button (Hatem, 2026-10-21): it ends the running game and moves on. Games 2 to 5 are
 // recorded as skipped. Lantern Watch is ended early and the trials already recorded are kept: the upload still
-// happens, with a partial session the scorer rates as insufficient data when it is short. If Lantern Watch has no
-// calibration firefly tapped yet, SessionMetrics v1 cannot carry anything (no calibration median): the chain then
-// ends at once, plays no further game and uploads nothing (the end screen is the calm "done" one). There is no time
-// limit per game. If Lantern Watch itself cannot start, nothing can be scored: its calm fallback sentence stays on
-// screen and nothing is uploaded, as before.
+// happens, with a partial session the scorer rates as insufficient data when it is short. SessionMetrics v1 needs a
+// calibration median, so over Lantern Watch the button is NOT shown (absent, not disabled) until the first calibration
+// hit is recorded (SessionGameRun.canEndEarly): a press can then always produce valid metrics. On the last game the
+// button says Finish. There is no time limit per game. If Lantern Watch itself cannot start, nothing can be scored:
+// its calm fallback sentence stays on screen, with no button, and nothing is uploaded, as before.
 
 // The "Game n of 5" card stays on screen until the child taps its button (Hatem, 2026-10-21: the children need time to
 // read). There is no timer, so no reading time is invented.
@@ -46,7 +46,7 @@ export type ChainDom = {
   /** A fresh full-size box inside `el` for one game; remove() takes it out again. */
   slot(el: HTMLElement): { el: HTMLElement; remove(): void };
   /** The visible "Next game" button, over `el`: pressing it calls onNext. It ignores presses for START_ENABLE_MS after it is drawn. */
-  next(el: HTMLElement, onNext: () => void): { remove(): void };
+  next(el: HTMLElement, onNext: () => void, last?: boolean): { remove(): void };
   /** The transition card "Game n of total" with a button: `tapped` settles when the child taps it, or when the card is removed. */
   card(el: HTMLElement, n: number, total: number): { remove(): void; tapped: Promise<void> };
 };
@@ -107,7 +107,7 @@ export function createSessionChain(deps: ChainDeps): SessionGame {
       slot = undefined;
     };
 
-    const playStep = (step: ChainStep) =>
+    const playStep = (step: ChainStep, last: boolean) =>
       new Promise<MiniGameEntry>((resolve) => {
         let done = false;
         const finish = (entry: MiniGameEntry) => {
@@ -120,7 +120,7 @@ export function createSessionChain(deps: ChainDeps): SessionGame {
         try {
           const box = deps.dom.slot(el);
           slot = box;
-          nextControl = safely(() => deps.dom.next(el, () => finish(skippedEntry(step.id, "skipped"))));
+          nextControl = safely(() => deps.dom.next(el, () => finish(skippedEntry(step.id, "skipped")), last));
           mounting = step.mount(box.el, (result) => {
             try {
               finish(toMiniGameEntry(result));
@@ -150,21 +150,26 @@ export function createSessionChain(deps: ChainDeps): SessionGame {
       const lanternRun = deps.lantern(el, childId, consent, audioContext);
       lantern = lanternRun;
       let ending = false;
-      nextControl = safely(() =>
-        deps.dom.next(el, () => {
-          if (ending || destroyed) return;
-          ending = true;
-          nextControl?.remove();
-          nextControl = undefined;
-          lanternRun.endEarly?.();
-        }),
-      );
+      // The button appears only once ending early yields valid metrics (the first calibration hit is recorded), so a press
+      // can always hand back a partial session; before that, and when Lantern Watch cannot start, there is no button.
+      void lanternRun.canEndEarly?.then(() => {
+        if (ending || destroyed || nextControl) return;
+        nextControl = safely(() =>
+          deps.dom.next(el, () => {
+            if (ending || destroyed) return;
+            ending = true;
+            nextControl?.remove();
+            nextControl = undefined;
+            lanternRun.endEarly?.();
+          }),
+        );
+      });
       const metrics = await lanternRun.promise; // never settles when Lantern Watch cannot start
       ending = true;
       nextControl?.remove();
       nextControl = undefined;
       if (destroyed) return null;
-      if (metrics === null) return null; // ended before any calibration firefly was tapped: nothing valid to upload
+      if (metrics === null) return null; // defensive: the button appears only after a calibration hit, so this should not happen; nothing valid to upload
       const entries: MiniGameEntry[] = [];
       for (const [k, step] of deps.steps.entries()) {
         card = safely(() => deps.dom.card(el, k + 2, total)) as { remove(): void; tapped: Promise<void> };
@@ -172,7 +177,7 @@ export function createSessionChain(deps: ChainDeps): SessionGame {
         card?.remove();
         card = undefined;
         if (destroyed) return null;
-        entries.push(await playStep(step));
+        entries.push(await playStep(step, k === deps.steps.length - 1));
         if (destroyed) return null;
       }
       const merged = SessionMetricsSchema.safeParse({ ...metrics, minigames: entries });
@@ -213,12 +218,12 @@ export const browserDom: ChainDom = {
     el.appendChild(box);
     return { el: box, remove: () => box.remove() };
   },
-  next(el, onNext) {
+  next(el, onNext, last) {
     // A small visible button in the top-right corner (never over a game's centre, its Start button or its text, checked
     // at 390x844, 844x390, 1024x768 and 768x1024). It keeps the 44 by 44 CSS px target (adhdcheck-dev, section 4) and
     // is disabled for START_ENABLE_MS after it is drawn: it appears right after the child's tap on a "Start" button, so
     // the second tap of a double tap must not also leave the game. TODO (Person 4): the placement and the texts.
-    const text = nextGameText("en"); // TODO (Person 4): language choice when the play page is translated
+    const text = nextGameText("en", last === true); // the last game says Finish. TODO (Person 4): language choice when the play page is translated
     const button = document.createElement("button");
     button.type = "button";
     button.setAttribute("type", "button");

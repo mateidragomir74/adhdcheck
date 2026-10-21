@@ -33,6 +33,9 @@ function harness(opts: { failing?: Record<string, "reject" | "throw" | "bad-resu
   const log: string[] = [];
   const completers: Record<string, (r: unknown) => void> = {};
   const nexts: Array<() => void> = [];
+  const lasts: boolean[] = [];
+  let skippable: () => void = () => {};
+  let skippableNow = false;
   const earlyResult = opts.earlyResult === undefined ? partialMetrics : opts.earlyResult;
   let pendingLantern: SessionMetrics | null | undefined;
   // The "Game n of 5" card waits for a tap (Hatem, 2026-10-21): by default the harness child taps at once.
@@ -54,6 +57,11 @@ function harness(opts: { failing?: Record<string, "reject" | "throw" | "bad-resu
         if (pendingLantern !== undefined) lanternDone(pendingLantern);
       }),
       destroy: () => log.push("lantern:destroy"),
+      // I-1: Lantern Watch says when ending it early gives valid metrics (a calibration hit is recorded)
+      canEndEarly: new Promise<void>((resolve) => {
+        skippable = resolve;
+        if (skippableNow) resolve();
+      }),
       endEarly: () => {
         log.push("lantern:endEarly");
         lanternDone(earlyResult);
@@ -76,9 +84,10 @@ function harness(opts: { failing?: Record<string, "reject" | "throw" | "bad-resu
     lantern,
     steps,
     dom: {
-      next: (_el, onNext) => {
+      next: (_el, onNext, last) => {
         log.push("next:on");
         nexts.push(onNext);
+        lasts.push(last === true);
         return { remove: () => log.push("next:remove") };
       },
       slot: () => ({ el: {} as HTMLElement, remove: () => log.push("slot:remove") }),
@@ -98,6 +107,11 @@ function harness(opts: { failing?: Record<string, "reject" | "throw" | "bad-resu
     next: () => nexts.at(-1)?.(),
     nextAt: (i: number) => nexts[i]?.(),
     nextsShown: () => nexts.length,
+    lastFlags: () => lasts,
+    lanternSkippable: () => {
+      skippableNow = true;
+      skippable();
+    },
     hold: () => (holdCard = true),
     release: () => cardTaps.shift()?.(),
     cardsWaiting: () => cardTaps.length,
@@ -430,7 +444,10 @@ describe("createSessionChain: the visible Next game button, games 2 to 5", () =>
     const run = createSessionChain(h.deps)({} as HTMLElement, CHILD, OFF);
     await flush();
     expect(h.log).toContain("card:1/5");
-    expect(h.nextsShown()).toBe(1); // Lantern Watch (the harness child taps its card at once)
+    expect(h.nextsShown()).toBe(0); // Lantern Watch before its first calibration hit: no button
+    h.lanternSkippable();
+    await flush();
+    expect(h.nextsShown()).toBe(1);
     h.finishLantern();
     await flush();
     for (const id of STEP_IDS) {
@@ -439,6 +456,7 @@ describe("createSessionChain: the visible Next game button, games 2 to 5", () =>
     }
     await run.promise;
     expect(h.nextsShown()).toBe(5);
+    expect(h.lastFlags()).toEqual([false, false, false, false, true]); // only the last game says Finish
     expect(h.log.filter((l) => l === "next:remove")).toHaveLength(5);
     // a control is created after its card was removed and removed before the next card is drawn
     const seq = h.log.filter((l) => l.startsWith("card:") || l.startsWith("next:"));
@@ -448,6 +466,8 @@ describe("createSessionChain: the visible Next game button, games 2 to 5", () =>
   it("the control of a game that already finished does nothing when it fires late, and a double press skips only once", async () => {
     const h = harness();
     createSessionChain(h.deps)({} as HTMLElement, CHILD, OFF);
+    h.lanternSkippable();
+    await flush();
     h.finishLantern();
     await flush();
     h.finish("star-path");
@@ -487,6 +507,9 @@ describe("createSessionChain: the visible Next game button during Lantern Watch"
       show: () => {},
     });
     await flush();
+    expect(h.nextsShown()).toBe(0); // no calibration hit yet: no button
+    h.lanternSkippable();
+    await flush();
     expect(h.nextsShown()).toBe(1);
     h.next(); // during Lantern Watch
     await flush();
@@ -509,6 +532,7 @@ describe("createSessionChain: the visible Next game button during Lantern Watch"
   it("removes the control as soon as Lantern Watch ends, and pressing it twice ends the game once", async () => {
     const h = harness();
     createSessionChain(h.deps)({} as HTMLElement, CHILD, OFF);
+    h.lanternSkippable();
     await flush();
     h.next();
     h.nextAt(0);
@@ -533,6 +557,7 @@ describe("createSessionChain: the visible Next game button during Lantern Watch"
       waitForNetwork: async () => {},
       show: (sc) => screens.push(sc.kind),
     });
+    h.lanternSkippable();
     await flush();
     h.next();
     await flow;
@@ -547,12 +572,74 @@ describe("createSessionChain: the visible Next game button during Lantern Watch"
     const run = createSessionChain(h.deps)({} as HTMLElement, CHILD, OFF);
     let settled = false;
     void run.promise.then(() => (settled = true));
+    h.lanternSkippable();
     await flush();
     run.destroy();
     h.next();
     await flush();
     expect(settled).toBe(false);
     expect(h.log.some((l) => l.startsWith("mount:"))).toBe(false);
+  });
+});
+
+describe("createSessionChain: Lantern Watch has no Next game button until ending early is safe (I-1, M-1)", () => {
+  it("shows no button while Lantern Watch has no calibration hit, however long it takes", async () => {
+    vi.useFakeTimers();
+    const h = harness();
+    createSessionChain(h.deps)({} as HTMLElement, CHILD, OFF);
+    await vi.advanceTimersByTimeAsync(10 * 60_000);
+    expect(h.log).toContain("lantern:mount");
+    expect(h.nextsShown()).toBe(0);
+    vi.useRealTimers();
+  });
+
+  it("after the first hit the button appears, and skipping then uploads once with Lantern's partial data and games 2 to 5 continuing", async () => {
+    const h = harness();
+    const uploads: SessionMetrics[] = [];
+    const game = createSessionChain(h.deps);
+    const flow = runPlayFlow("code-1", {
+      resolve: async () => ({ child_id: CHILD, consent: OFF }),
+      play: (childId, consent) => game({} as HTMLElement, childId, consent).promise,
+      waitForStart: async () => {},
+      upload: async (_c, m) => {
+        uploads.push(m);
+        return { status: "saved", score: ScoreResultSchema.parse(validScoreResult) } as UploadResult;
+      },
+      waitForNetwork: async () => {},
+      show: () => {},
+    });
+    await flush();
+    expect(h.nextsShown()).toBe(0);
+    h.lanternSkippable();
+    await flush();
+    expect(h.nextsShown()).toBe(1);
+    h.next();
+    await flush();
+    expect(h.log).toContain("mount:star-path");
+    for (const id of STEP_IDS) {
+      await flush();
+      h.finish(id);
+    }
+    await flow;
+    expect(uploads).toHaveLength(1);
+    expect(uploads[0]?.trials).toEqual(partialMetrics.trials);
+    expect(uploads[0]?.minigames).toHaveLength(4);
+  });
+
+  it("a Lantern Watch that fails to mount never gets the button (nothing to press over the 'not ready' sentence)", async () => {
+    const h = harness();
+    const dead: ChainDeps = { ...h.deps, lantern: () => ({ promise: new Promise(() => {}), destroy() {}, canEndEarly: new Promise<void>(() => {}), endEarly() {} }) };
+    createSessionChain(dead)({} as HTMLElement, CHILD, OFF);
+    await flush();
+    expect(h.nextsShown()).toBe(0);
+  });
+
+  it("a Lantern Watch that cannot say when it is safe gets no button either (conservative)", async () => {
+    const h = harness();
+    const plain: ChainDeps = { ...h.deps, lantern: () => ({ promise: new Promise(() => {}), destroy() {} }) };
+    createSessionChain(plain)({} as HTMLElement, CHILD, OFF);
+    await flush();
+    expect(h.nextsShown()).toBe(0);
   });
 });
 
@@ -574,6 +661,10 @@ describe("Next game texts", () => {
       expect(JSON.stringify(NEXT_STRINGS[lang])).not.toContain(String.fromCharCode(0x2014));
     }
     expect(nextGameText("en").label).toBe("Next game");
+    // M-2: the last game ends the session and uploads, so its button says Finish
+    expect(nextGameText("en", true).label).toBe("Finish");
+    expect(nextGameText("ro", true).label.length).toBeGreaterThan(0);
+    expect(nextGameText("ro", true).label).not.toBe(nextGameText("ro").label);
   });
 });
 
@@ -633,6 +724,18 @@ describe("browserDom.next (the visible control)", () => {
     expect(button.style.cssText).toMatch(/min-width:44px/);
     expect(button.style.cssText).not.toMatch(/opacity:0(;|$)/);
     expect(button.style.cssText).toMatch(/touch-action:manipulation/);
+  });
+
+  it("on the last game the label is Finish (M-2)", () => {
+    const made = fakeDoc();
+    browserDom.next({ appendChild() {} } as unknown as HTMLElement, () => {}, true);
+    const button = made.find((n) => n.tag === "button")!;
+    const all: Node[] = [];
+    const walk = (n: Node) => (all.push(n), n.kids.forEach(walk));
+    walk(button);
+    expect(all.some((n) => n.textContent === "Finish")).toBe(true);
+    expect(all.some((n) => n.textContent === "Next game")).toBe(false);
+    expect(button.attrs["aria-label"]).toBe(nextGameText("en", true).aria);
   });
 
   it("ignores presses for START_ENABLE_MS (a double tap on Start cannot also hit Next), then calls onNext once", async () => {
