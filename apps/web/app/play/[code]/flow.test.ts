@@ -170,3 +170,13 @@ describe("runPlayFlow, link checked again at the start tap (M2)", () => {
     expect(screens).toEqual(["checking", "ready", "playing", "saving", "done"]);
   });
 });
+
+describe("runPlayFlow, a game ended with nothing to save (Next game before any usable data)", () => {
+  it("ends on the calm done screen and uploads nothing when the game hands back null", async () => {
+    const { deps, screens, calls } = setup({ play: async () => null });
+    await runPlayFlow("code-1", deps);
+    expect(calls.upload).toBe(0);
+    expect(screens.at(-1)).toBe("done");
+    expect(screens).not.toContain("saving");
+  });
+});

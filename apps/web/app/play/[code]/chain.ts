@@ -8,7 +8,7 @@ import {
 import { START_ENABLE_MS } from "@adhdcheck/game";
 import type { BridgeWaitResult, RoutePlannerResult, StarPathResult, TreasureChoiceResult } from "@adhdcheck/game";
 import type { SessionGame, SessionGameRun } from "./game";
-import { transitionText } from "./strings";
+import { nextGameText, transitionText } from "./strings";
 
 // One /play/<code> session plays every built mini-game in a row, with no parent action (decided by Hatem,
 // 2026-10-20). Order: research/04 section 5 (missions 1 to 5) and docs/02 FR-61 to FR-64, without Storm Watch (FR-60,
@@ -21,16 +21,17 @@ import { transitionText } from "./strings";
 //
 // Only after the last game does the promise resolve, so the page uploads once (flow.ts). The upload is Lantern's
 // SessionMetrics, unchanged, plus `minigames` (PC-02) with the four results. A game that fails to start, throws or
-// returns something unusable is skipped and recorded, and the chain goes on. A game that starts and never ends can
-// be skipped by an adult: a long press on a hidden corner control (see DEFAULT_SKIP_HOLD_MS), recorded as skipped.
-// There is no time limit per game. Lantern Watch cannot be skipped: the upload cannot be built without it. If Lantern Watch itself cannot start,
-// nothing can be scored: its calm fallback sentence stays on screen and nothing is uploaded, as before.
+// returns something unusable is skipped and recorded, and the chain goes on. Every game, Lantern Watch included, shows
+// a small visible "Next game" button (Hatem, 2026-10-21): it ends the running game and moves on. Games 2 to 5 are
+// recorded as skipped. Lantern Watch is ended early and the trials already recorded are kept: the upload still
+// happens, with a partial session the scorer rates as insufficient data when it is short. SessionMetrics v1 needs a
+// calibration median, so over Lantern Watch the button is NOT shown (absent, not disabled) until the first calibration
+// hit is recorded (SessionGameRun.canEndEarly): a press can then always produce valid metrics. On the last game the
+// button says Finish. There is no time limit per game. If Lantern Watch itself cannot start, nothing can be scored:
+// its calm fallback sentence stays on screen, with no button, and nothing is uploaded, as before.
 
 // The "Game n of 5" card stays on screen until the child taps its button (Hatem, 2026-10-21: the children need time to
 // read). There is no timer, so no reading time is invented.
-
-// TODO (design choice, no source): how long an adult holds the hidden corner control to skip the running game.
-export const DEFAULT_SKIP_HOLD_MS = 3000;
 
 export type MiniGameResult = StarPathResult | BridgeWaitResult | TreasureChoiceResult | RoutePlannerResult;
 type Handle = { destroy(): void };
@@ -44,8 +45,8 @@ export type ChainStep = {
 export type ChainDom = {
   /** A fresh full-size box inside `el` for one game; remove() takes it out again. */
   slot(el: HTMLElement): { el: HTMLElement; remove(): void };
-  /** A hidden control in a corner of `el`: holding it for holdMs calls onSkip. For the adult, never the child. */
-  skip(el: HTMLElement, onSkip: () => void, holdMs: number): { remove(): void };
+  /** The visible "Next game" button, over `el`: pressing it calls onNext. It ignores presses for START_ENABLE_MS after it is drawn. */
+  next(el: HTMLElement, onNext: () => void, last?: boolean): { remove(): void };
   /** The transition card "Game n of total" with a button: `tapped` settles when the child taps it, or when the card is removed. */
   card(el: HTMLElement, n: number, total: number): { remove(): void; tapped: Promise<void> };
 };
@@ -53,7 +54,6 @@ export type ChainDom = {
 export type ChainDeps = {
   lantern: SessionGame;
   steps: readonly ChainStep[];
-  skipHoldMs: number;
   dom: ChainDom;
 };
 
@@ -67,37 +67,13 @@ export function toMiniGameEntry(r: MiniGameResult): MiniGameEntry {
   return MiniGameEntrySchema.parse(plain);
 }
 
-export type SkipReason = "mount_failed" | "result_invalid" | "skipped_by_adult";
-
-/** Long press: down() arms a timer, up() (finger lifted, cancelled or left) disarms it, the timer calls onHold once. */
-export function createHoldDetector(
-  holdMs: number,
-  onHold: () => void,
-  setTimer: (fn: () => void, ms: number) => unknown = (fn, ms) => setTimeout(fn, ms),
-  clearTimer: (id: unknown) => void = (id) => clearTimeout(id as ReturnType<typeof setTimeout>),
-) {
-  let id: unknown = null;
-  return {
-    down() {
-      if (id !== null) return;
-      id = setTimer(() => {
-        id = null;
-        onHold();
-      }, holdMs);
-    },
-    up() {
-      if (id === null) return;
-      clearTimer(id);
-      id = null;
-    },
-  };
-}
+export type SkipReason = "mount_failed" | "result_invalid" | "skipped";
 
 function skippedEntry(id: MiniGameId, reason: SkipReason): MiniGameEntry {
   return { id, version: "none", params: {}, results: { status: "skipped", reason } };
 }
 
-// The card and the skip control are decoration and an adult's escape hatch: a DOM problem in them must never stop a game.
+// The card and the Next game control are not the measurement: a DOM problem in them must never stop a game.
 // A card that cannot be drawn must not stop the chain either: it counts as already tapped.
 const NOTHING = { remove() {}, tapped: Promise.resolve() };
 function safely<T extends { remove(): void; tapped?: Promise<void> }>(make: () => T): T | typeof NOTHING {
@@ -116,7 +92,7 @@ export function createSessionChain(deps: ChainDeps): SessionGame {
     let current: Handle | undefined;
     let slot: { remove(): void } | undefined;
     let card: { remove(): void; tapped: Promise<void> } | undefined;
-    let skipControl: { remove(): void } | undefined;
+    let nextControl: { remove(): void } | undefined;
 
     const closeGame = () => {
       try {
@@ -125,13 +101,13 @@ export function createSessionChain(deps: ChainDeps): SessionGame {
         // a game that cannot be destroyed must not stop the chain
       }
       current = undefined;
-      skipControl?.remove();
-      skipControl = undefined;
+      nextControl?.remove();
+      nextControl = undefined;
       slot?.remove();
       slot = undefined;
     };
 
-    const playStep = (step: ChainStep) =>
+    const playStep = (step: ChainStep, last: boolean) =>
       new Promise<MiniGameEntry>((resolve) => {
         let done = false;
         const finish = (entry: MiniGameEntry) => {
@@ -144,7 +120,7 @@ export function createSessionChain(deps: ChainDeps): SessionGame {
         try {
           const box = deps.dom.slot(el);
           slot = box;
-          skipControl = safely(() => deps.dom.skip(el, () => finish(skippedEntry(step.id, "skipped_by_adult")), deps.skipHoldMs));
+          nextControl = safely(() => deps.dom.next(el, () => finish(skippedEntry(step.id, "skipped")), last));
           mounting = step.mount(box.el, (result) => {
             try {
               finish(toMiniGameEntry(result));
@@ -171,9 +147,29 @@ export function createSessionChain(deps: ChainDeps): SessionGame {
       card?.remove();
       card = undefined;
       if (destroyed) return null;
-      lantern = deps.lantern(el, childId, consent, audioContext);
-      const metrics = await lantern.promise; // never settles when Lantern Watch cannot start
+      const lanternRun = deps.lantern(el, childId, consent, audioContext);
+      lantern = lanternRun;
+      let ending = false;
+      // The button appears only once ending early yields valid metrics (the first calibration hit is recorded), so a press
+      // can always hand back a partial session; before that, and when Lantern Watch cannot start, there is no button.
+      void lanternRun.canEndEarly?.then(() => {
+        if (ending || destroyed || nextControl) return;
+        nextControl = safely(() =>
+          deps.dom.next(el, () => {
+            if (ending || destroyed) return;
+            ending = true;
+            nextControl?.remove();
+            nextControl = undefined;
+            lanternRun.endEarly?.();
+          }),
+        );
+      });
+      const metrics = await lanternRun.promise; // never settles when Lantern Watch cannot start
+      ending = true;
+      nextControl?.remove();
+      nextControl = undefined;
       if (destroyed) return null;
+      if (metrics === null) return null; // defensive: the button appears only after a calibration hit, so this should not happen; nothing valid to upload
       const entries: MiniGameEntry[] = [];
       for (const [k, step] of deps.steps.entries()) {
         card = safely(() => deps.dom.card(el, k + 2, total)) as { remove(): void; tapped: Promise<void> };
@@ -181,7 +177,7 @@ export function createSessionChain(deps: ChainDeps): SessionGame {
         card?.remove();
         card = undefined;
         if (destroyed) return null;
-        entries.push(await playStep(step));
+        entries.push(await playStep(step, k === deps.steps.length - 1));
         if (destroyed) return null;
       }
       const merged = SessionMetricsSchema.safeParse({ ...metrics, minigames: entries });
@@ -189,10 +185,10 @@ export function createSessionChain(deps: ChainDeps): SessionGame {
       return merged.success ? merged.data : metrics;
     };
 
-    const promise = new Promise<SessionMetrics>((resolve) => {
+    const promise = new Promise<SessionMetrics | null>((resolve) => {
       void run().then(
         (m) => {
-          if (m && !destroyed) resolve(m);
+          if (!destroyed) resolve(m);
         },
         () => undefined, // unreachable by design: nothing in run() rejects except Lantern's own promise, which never does
       );
@@ -222,25 +218,47 @@ export const browserDom: ChainDom = {
     el.appendChild(box);
     return { el: box, remove: () => box.remove() };
   },
-  skip(el, onSkip, holdMs) {
-    // 56 px, above the game, invisible: an adult who knows it is there holds it. A child tapping the corner by chance
-    // does nothing (a short press is ignored), and holds are rare. TODO (Person 4): where it should sit.
-    const box = document.createElement("div");
-    box.setAttribute("aria-label", "Skip this game (hold)");
-    box.style.cssText = "position:absolute;top:0;right:0;width:56px;height:56px;z-index:10;touch-action:none;-webkit-touch-callout:none;user-select:none;-webkit-user-select:none;opacity:0";
-    const hold = createHoldDetector(holdMs, onSkip);
-    box.addEventListener("pointerdown", (e) => {
+  next(el, onNext, last) {
+    // A small visible button in the top-right corner (never over a game's centre, its Start button or its text, checked
+    // at 390x844, 844x390, 1024x768 and 768x1024). It keeps the 44 by 44 CSS px target (adhdcheck-dev, section 4) and
+    // is disabled for START_ENABLE_MS after it is drawn: it appears right after the child's tap on a "Start" button, so
+    // the second tap of a double tap must not also leave the game. TODO (Person 4): the placement and the texts.
+    const text = nextGameText("en", last === true); // the last game says Finish. TODO (Person 4): language choice when the play page is translated
+    const button = document.createElement("button");
+    button.type = "button";
+    button.setAttribute("type", "button");
+    button.setAttribute("aria-label", text.aria);
+    button.style.cssText =
+      "position:absolute;top:max(8px,env(safe-area-inset-top));right:max(8px,env(safe-area-inset-right));z-index:10;display:flex;align-items:center;gap:8px;min-width:44px;min-height:44px;padding:8px 14px;border:2px solid rgba(255,253,247,.85);border-radius:9999px;background:rgba(7,11,43,.72);color:#fffdf7;font:inherit;font-size:16px;font-weight:600;line-height:1;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none";
+    const icon = document.createElement("span");
+    icon.setAttribute("aria-hidden", "true");
+    icon.style.cssText = "display:flex;width:18px;height:18px";
+    // Static markup, no user input: a "skip to next" glyph (a triangle and a bar).
+    icon.innerHTML =
+      '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true" focusable="false"><path d="M5 4l11 8-11 8z"/><rect x="18" y="4" width="3" height="16" rx="1"/></svg>';
+    const label = document.createElement("span");
+    label.textContent = text.label;
+    button.append(icon, label);
+    // Stops a press here from reaching the game under it (the page has its own pointer handlers).
+    button.addEventListener("pointerdown", (e) => e.stopPropagation());
+    button.disabled = true;
+    button.style.opacity = "0.45";
+    const enable = setTimeout(() => {
+      button.disabled = false;
+      button.style.opacity = "1";
+    }, START_ENABLE_MS);
+    let used = false;
+    button.addEventListener("click", (e) => {
       e.stopPropagation();
-      hold.down();
+      if (button.disabled || used) return;
+      used = true;
+      onNext();
     });
-    // Chrome for Android opens a context menu on a long press and may then cancel the pointer: the menu is refused.
-    box.addEventListener("contextmenu", (e) => e.preventDefault());
-    for (const type of ["pointerup", "pointercancel", "pointerleave"]) box.addEventListener(type, () => hold.up());
-    el.appendChild(box);
+    el.appendChild(button);
     return {
       remove: () => {
-        hold.up();
-        box.remove();
+        clearTimeout(enable);
+        button.remove();
       },
     };
   },

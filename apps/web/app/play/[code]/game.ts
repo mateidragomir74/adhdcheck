@@ -1,7 +1,7 @@
 import type { SessionMetrics } from "@adhdcheck/contracts";
 import type { Consent } from "@/lib/play-client";
 import { mountWithFallback } from "../mountGuard";
-import { DEFAULT_SKIP_HOLD_MS, DEFAULT_STEPS, browserDom, createSessionChain } from "./chain";
+import { DEFAULT_STEPS, browserDom, createSessionChain } from "./chain";
 import { PLAY_STRINGS } from "./strings";
 
 // The game whose session is uploaded and scored: Lantern Watch, the go/no-go task (Person 1, FR-04 to
@@ -13,11 +13,18 @@ import { PLAY_STRINGS } from "./strings";
 //
 // destroy() stops the game (render loop, WebGL, audio, listeners) and is what the page calls when it is left
 // (R3-L1); after it the promise never settles, so nothing is uploaded.
-export type SessionGameRun = { promise: Promise<SessionMetrics>; destroy(): void };
+//
+// endEarly() is the visible "Next game" button (chain.ts): it ends the game now. The promise then resolves with the
+// trials already recorded (a partial session, which the scorer rates as insufficient data when it is short), or with
+// null when nothing valid can be built yet (SessionMetrics v1 needs a calibration median, so at least one calibration
+// firefly must have been tapped). Null means: nothing to upload.
+// canEndEarly resolves when the first calibration hit is recorded: from then on endEarly() yields valid metrics, and only
+// then does the chain show its "Next game" button over Lantern Watch. It never resolves if the game cannot start.
+export type SessionGameRun = { promise: Promise<SessionMetrics | null>; destroy(): void; endEarly?(): void; canEndEarly?: Promise<void> };
 // audioContext: created and resumed by the page inside the start tap (lib/audio-unlock.ts); the game reuses it.
 export type SessionGame = (el: HTMLElement, childId: string, consent: Consent, audioContext?: AudioContext) => SessionGameRun;
 
-type Handle = { destroy(): void };
+type Handle = { destroy(): void; endEarly?(): void };
 type MountOptions = {
   childId: string;
   autoStart: boolean;
@@ -26,6 +33,8 @@ type MountOptions = {
   blocks?: number;
   trialsPerBlock?: number;
   onComplete: (metrics: SessionMetrics) => void;
+  onUnusable?: () => void;
+  onCanEndEarly?: () => void;
   onError: () => void;
 };
 export type MountLanternWatch = (el: HTMLElement, opts: MountOptions) => Promise<Handle>;
@@ -51,13 +60,20 @@ export function createSessionGame(loadMount: () => Promise<MountLanternWatch>): 
     let handle: Handle | undefined;
     let cancel: (() => void) | undefined;
     let destroyed = false;
+    let endRequested = false;
+    let resolveNull: () => void = () => {};
+    let signalCanEnd: () => void = () => {};
+    const canEndEarly = new Promise<void>((resolve) => (signalCanEnd = resolve));
     const stop = () => {
       destroyed = true;
       cancel?.();
       handle?.destroy();
       handle = undefined;
     };
-    const promise = new Promise<SessionMetrics>((resolve) => {
+    const promise = new Promise<SessionMetrics | null>((resolve) => {
+      resolveNull = () => {
+        if (!destroyed) resolve(null);
+      };
       const fail = () => {
         handle?.destroy();
         handle = undefined;
@@ -76,14 +92,32 @@ export function createSessionGame(loadMount: () => Promise<MountLanternWatch>): 
             handle = undefined;
             if (!destroyed) resolve(metrics);
           },
+          onCanEndEarly: () => {
+            if (!destroyed) signalCanEnd();
+          },
+          onUnusable: () => {
+            handle?.destroy();
+            handle = undefined;
+            resolveNull();
+          },
           onError: fail,
         }),
       );
       cancel = mountWithFallback(el, mounting, PLAY_STRINGS.unavailable, (h) => {
         handle = h;
+        if (endRequested && !destroyed) h.endEarly?.(); // asked before the game finished mounting
       });
     });
-    return { promise, destroy: stop };
+    return {
+      promise,
+      canEndEarly,
+      destroy: stop,
+      endEarly: () => {
+        if (destroyed || endRequested) return;
+        endRequested = true;
+        handle?.endEarly?.();
+      },
+    };
   };
 }
 
@@ -93,6 +127,5 @@ const lanternWatch = createSessionGame(() => import("@adhdcheck/game").then((m) 
 export const sessionGame: SessionGame | null = createSessionChain({
   lantern: lanternWatch,
   steps: DEFAULT_STEPS,
-  skipHoldMs: DEFAULT_SKIP_HOLD_MS,
   dom: browserDom,
 });

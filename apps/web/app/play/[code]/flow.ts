@@ -19,7 +19,8 @@ export type FlowDeps = {
   resolve(code: string): Promise<{ child_id: string; consent: Consent } | null>;
   /** null when no session game exists yet. consent: the parent's choice; the game may start a sensor only
    * when its flag is true (FR-70). */
-  play: ((childId: string, consent: Consent) => Promise<SessionMetrics>) | null;
+  /** Resolves with the session, or null when the game was ended with nothing valid to save (nothing is uploaded). */
+  play: ((childId: string, consent: Consent) => Promise<SessionMetrics | null>) | null;
   waitForStart(): Promise<void>;
   upload(code: string, metrics: SessionMetrics): Promise<UploadResult>;
   waitForNetwork(): Promise<void>;
@@ -50,6 +51,7 @@ export async function runPlayFlow(code: string, deps: FlowDeps, signal?: AbortSi
   deps.show({ kind: "playing" });
   const metrics = await deps.play(link.child_id, link.consent);
   if (gone()) return;
+  if (metrics === null) return deps.show({ kind: "done" }); // ended early with no usable data: calm end, nothing to upload
 
   deps.show({ kind: "saving" });
   for (;;) {
