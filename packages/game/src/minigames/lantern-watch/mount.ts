@@ -20,11 +20,15 @@ export interface LanternWatchOptions {
   /** An AudioContext the caller already created and resumed inside a user gesture (see GameAudio). */
   audioContext?: AudioContext;
   onComplete?: (metrics: SessionMetrics) => void;
+  /** endEarly() found nothing valid to hand back (no calibration firefly tapped yet). */
+  onUnusable?: () => void;
   /** The payload could not be built (should not happen: it means a contract violation). */
   onError?: (err: unknown) => void;
 }
 export interface LanternWatchHandle {
   destroy: () => void;
+  /** Ends the game now and hands back the trials already recorded through onComplete (or onUnusable). */
+  endEarly: () => void;
 }
 
 export function taskFor(opts: Pick<LanternWatchOptions, "blocks" | "trialsPerBlock" | "stimulusMs">): TaskConfig {
@@ -48,6 +52,7 @@ export async function mountLanternWatch(parent: HTMLElement, opts: LanternWatchO
     autoStart: opts.autoStart === true,
     audioContext: opts.audioContext,
     onComplete: opts.onComplete,
+    onUnusable: opts.onUnusable,
     onError: opts.onError,
   });
 }

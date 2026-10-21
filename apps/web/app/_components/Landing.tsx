@@ -66,6 +66,8 @@ export function Landing() {
         <How t={t} />
         <Game t={t} />
         <Result t={t} />
+        <Audience t={t} />
+        <Plan t={t} />
         <Offer t={t} />
         <Privacy t={t} />
         <Faq t={t} />
@@ -180,6 +182,7 @@ function Header({ t, lang, setLang }: { t: Dict; lang: Lang; setLang: (l: Lang) 
         <Logo />
         <nav aria-label="Main" className="hidden items-center gap-7 text-sm font-semibold text-lavender lg:flex">
           <a className="hover:text-moon" href="#how">{t.nav.how}</a>
+          <a className="hover:text-moon" href="#who">{t.nav.who}</a>
           <a className="hover:text-moon" href="#offer">{t.nav.offer}</a>
           <a className="hover:text-moon" href="#privacy">{t.nav.privacy}</a>
           <a className="hover:text-moon" href="#faq">{t.nav.faq}</a>
@@ -431,6 +434,65 @@ function Result({ t }: { t: Dict }) {
           </p>
           <p className="rounded-xl bg-white/10 px-4 py-3 text-sm font-semibold text-moon">{t.result.disclaimer}</p>
         </div>
+      </Container>
+    </section>
+  );
+}
+
+/* ---------- audience (pitch/icp-and-go-to-market.md, ICP table) ---------- */
+
+function Audience({ t }: { t: Dict }) {
+  const a = t.audience;
+  return (
+    <section id="who" className="bg-dusk-deep py-20 md:py-28">
+      <Container>
+        <div className="reveal max-w-3xl">
+          <Kicker>{a.kicker}</Kicker>
+          <H2>{a.title}</H2>
+          <p className="mt-4 text-lg text-lavender">{a.intro}</p>
+        </div>
+        <dl className="mt-12">
+          {a.items.map((it, i) => (
+            <div
+              key={it.who}
+              className={`reveal grid gap-1 border-t py-5 md:grid-cols-[minmax(0,20rem)_1fr] md:gap-10 ${i === 0 ? "border-lantern/60" : "border-lavender/15"}`}
+            >
+              <dt className="font-display text-xl font-semibold text-moon">{it.who}</dt>
+              <dd className="max-w-2xl text-lg leading-relaxed text-lavender">{it.why}</dd>
+            </div>
+          ))}
+        </dl>
+        <p className="reveal mt-6 border-t border-lavender/15 pt-6 text-lavender">{a.note}</p>
+      </Container>
+    </section>
+  );
+}
+
+/* ---------- plan (pitch/icp-and-go-to-market.md, go-to-market) ---------- */
+
+function Plan({ t }: { t: Dict }) {
+  const p = t.plan;
+  return (
+    <section id="plan" className="bg-dusk py-20 md:py-28">
+      <Container>
+        <div className="reveal max-w-3xl">
+          <Kicker>{p.kicker}</Kicker>
+          <H2>{p.title}</H2>
+          <p className="mt-4 text-lg text-lavender">{p.intro}</p>
+        </div>
+        <ol className="mt-12 max-w-3xl space-y-7">
+          {p.steps.map((step, i) => (
+            <li key={i} className="reveal flex gap-5">
+              <span className="grid size-12 shrink-0 place-items-center rounded-full bg-river font-display text-xl font-bold text-dusk-deep">
+                {i + 1}
+              </span>
+              <p className="pt-2 text-lg leading-relaxed text-moon">{step}</p>
+            </li>
+          ))}
+        </ol>
+        <p className="reveal mt-10 max-w-3xl rounded-2xl border border-lantern/40 bg-lantern/10 p-5 text-lg leading-relaxed text-moon">
+          {p.note}
+        </p>
       </Container>
     </section>
   );

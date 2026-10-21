@@ -7,6 +7,11 @@
 // reached through a link emailed to the parent who paid, behind login (docs/02 D-05b and R3-D1, DECIDED, Hatem,
 // 2026-10-20). Pilot, not CE marked. TODO (texts owner): approve the two FAQ answers on the report that say a link is emailed.
 // "10–\u206015": a word joiner keeps the range on one line.
+// "audience" and "plan" (added 2026-10-21) come only from pitch/icp-and-go-to-market.md (team decision, 20 Oct 2026) and
+// pitch/README.md. Everything not done yet is written as a plan ("we plan", "we want", "we are seeking") or as expected,
+// never as a fact: no partnership, no ISO 13485 compliance, no CE marking, no clinical validation is claimed, and the
+// device class is "expected". The md step "Their validation drives adoption" is not reproduced: the wording gate
+// (landing-copy.ts) allows the word "validation" only inside a negation. TODO (texts owner): proofread the RO text below.
 // Retention period is still open (docs/02 D-09), so the FAQ says so instead of giving a number.
 
 export type Lang = "ro" | "en";
@@ -15,6 +20,7 @@ const ro = {
   meta: { skip: "Sari la conținut" },
   nav: {
     how: "Cum funcționează",
+    who: "Pentru cine",
     offer: "Ce primești",
     privacy: "Confidențialitate",
     faq: "Întrebări",
@@ -102,6 +108,31 @@ const ro = {
     next: "Pasul următor: cu cine să vorbești (medicul de familie, pediatrul sau medicul psihiatru pentru copii) și ce să duci.",
     disclaimer: "Acesta nu este un diagnostic: doar un specialist poate pune unul.",
   },
+  audience: {
+    kicker: "Pentru cine",
+    title: "Pentru cine construim ADHDCheck",
+    intro: "Astăzi aplicația se adresează părinților. Ne propunem să ajungem și la cei care îi însoțesc.",
+    items: [
+      { who: "Părinții copiilor de 6–12 ani", why: "Ei decid dacă cer o evaluare." },
+      { who: "Asociațiile pentru ADHD", why: "În fiecare țară în care facem aplicația cunoscută. Ele ajung la familii și le sfătuiesc." },
+      { who: "Profesorii", why: "Ei observă la clasă probleme de atenție." },
+      { who: "Asistenții medicali", why: "Ne propunem ca, înainte de consult, copiii să se joace în sala de așteptare, ca medicul să primească o primă orientare și să câștige timp." },
+      { who: "Medicii de familie", why: "Ne propunem o primă orientare înainte de trimiterea la specialist." },
+    ],
+    note: "Părinții sunt primii. Folosirea de către profesori, asistenți medicali și medici de familie vine mai târziu, cu propriul consimțământ.",
+  },
+  plan: {
+    kicker: "Planul nostru",
+    title: "Cum ne propunem să ajungem la familii",
+    intro: "Ne propunem să ajungem la familii prin asociațiile pentru ADHD și prin medicii în care ele au încredere.",
+    steps: [
+      "Ne propunem să contactăm asociațiile românești pentru ADHD și medicii de frunte în ADHD din România.",
+      "Vrem să dezvoltăm aplicația împreună cu ei și să continuăm să o dezvoltăm.",
+      "Ne propunem să lucrăm într-un sistem de management al calității conform ISO 13485.",
+      "Ne propunem marcajul CE conform Regulamentului UE privind dispozitivele medicale (MDR), pentru piața europeană, începând cu România. Ne așteptăm ca aplicația să fie un dispozitiv medical de clasa IIa.",
+    ],
+    note: "Nimic din toate acestea nu este încă făcut. ADHDCheck este un pilot, nu are marcaj CE, iar pragurile lui nu au fost încă verificate într-un studiu clinic; căutăm un partener clinic pentru un pilot de validare.",
+  },
   offer: {
     kicker: "Ce primești",
     title: "Răspunsul e gratuit. Raportul e al tău, dacă îl vrei.",
@@ -150,6 +181,10 @@ const ro = {
       {
         q: "E gata de folosit?",
         a: "Este un pilot în dezvoltare. Nu are încă marcaj CE, iar pragurile nu au fost încă verificate într-un studiu clinic. De aceea rezultatul este o recomandare, nu un verdict.",
+      },
+      {
+        q: "Pentru cine este ADHDCheck?",
+        a: "Acum, pentru părinții copiilor de 6–12 ani. Folosirea de către profesori, asistenți medicali și medici de familie vine mai târziu, cu propriul consimțământ.",
       },
       {
         q: "Pentru ce vârstă este?",
@@ -204,6 +239,7 @@ const en: Dict = {
   meta: { skip: "Skip to content" },
   nav: {
     how: "How it works",
+    who: "Who it is for",
     offer: "What you get",
     privacy: "Privacy",
     faq: "FAQ",
@@ -291,6 +327,31 @@ const en: Dict = {
     next: "Next step: who to talk to (your GP, a paediatrician or a child psychiatrist) and what to bring.",
     disclaimer: "This is not a diagnosis. Only a professional can make one.",
   },
+  audience: {
+    kicker: "Who it is for",
+    title: "Who we are building ADHDCheck for",
+    intro: "Today the app is for parents. We plan to reach the people who support them too.",
+    items: [
+      { who: "Parents of children aged 6–12", why: "They decide whether to seek an assessment." },
+      { who: "ADHD associations", why: "In each country where we advertise the app. They reach and advise families." },
+      { who: "Teachers", why: "They notice attention problems in class." },
+      { who: "Nurses", why: "We plan for children to play in the waiting room before the visit, so the doctor gets a first orientation and saves time." },
+      { who: "GPs (general practitioners)", why: "We plan a first orientation before a referral." },
+    ],
+    note: "Parents come first. Use by teachers, nurses and GPs comes later, with its own consent.",
+  },
+  plan: {
+    kicker: "Our plan",
+    title: "How we plan to reach families",
+    intro: "We plan to reach families through ADHD associations and the doctors they trust.",
+    steps: [
+      "We plan to contact the Romanian ADHD associations and the leading doctors on ADHD in Romania.",
+      "We want to develop the app together with them and keep developing it.",
+      "We plan to work under a quality management system per ISO 13485.",
+      "We plan CE marking under the EU Medical Device Regulation (MDR), for the European market, starting in Romania. We expect the app to be a class IIa medical device.",
+    ],
+    note: "None of this is done yet. ADHDCheck is a pilot, it is not CE marked and its thresholds have not yet been checked in a clinical study; we are seeking a clinical partner for a validation pilot.",
+  },
   offer: {
     kicker: "What you get",
     title: "The answer is free. The report is yours if you want it.",
@@ -339,6 +400,10 @@ const en: Dict = {
       {
         q: "Is it ready to use?",
         a: "It is a pilot in development. It is not CE marked yet, and its thresholds have not yet been checked in a clinical study. That is why the result is a recommendation, not a verdict.",
+      },
+      {
+        q: "Who is ADHDCheck for?",
+        a: "Today, for parents of children aged 6 to 12. Use by teachers, nurses and GPs comes later, with its own consent.",
       },
       {
         q: "What age is it for?",

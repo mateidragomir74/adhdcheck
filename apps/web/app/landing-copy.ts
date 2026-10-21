@@ -44,3 +44,39 @@ export function findUnnegated(texts: string[]): string[] {
   }
   return hits;
 }
+
+// A regulatory status or a partnership is a plan or a negation on this page, never a present fact: no CE marking,
+// ISO 13485 compliance, class or certification may be stated unless the sentence also plans, expects, seeks or negates it.
+// Case-sensitive on purpose: "CE" must not match the Romanian word "ce".
+const REGULATORY = /13485|marcaj CE|CE mark|\bCE\b|clas[aă] IIa|class IIa|\bMDR\b|\bISO\b|[Cc]ertif/;
+const PLAN_OR_NEGATION = /(?<![\p{L}])(?:plan|planned|expect|expected|seek|seeking|want|intend|not|no|none|nor|never|nu|nici|nimic|fără)(?![\p{L}])|propunem|vrem|intenț|așteptăm|căutăm/iu;
+
+export function findPresentTenseRegulatory(texts: string[]): string[] {
+  const hits: string[] = [];
+  for (const text of texts) {
+    for (const sentence of text.split(/(?<=[.!?])\s+/)) {
+      if (REGULATORY.test(sentence) && !PLAN_OR_NEGATION.test(sentence)) hits.push(`regulatory status stated as a fact: ${sentence}`);
+    }
+  }
+  return hits;
+}
+
+// Page title, description and social card are read by far more people than the body, and nobody reads them against it:
+// every figure and every word of four letters or more in a metadata text must appear in the page body (diacritics
+// and case folded; a word counts when its first five letters appear in some body word, so "liniștit" finds "liniștită").
+const fold = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\u2060/g, "").toLowerCase();
+const words = (s: string) => fold(s).split(/[^a-z0-9]+/).filter(Boolean);
+
+export function metadataClaimsMissing(metaTexts: string[], body: string): string[] {
+  const bodyWords = words(body);
+  const exact = new Set(bodyWords);
+  const prefixes = new Set(bodyWords.map((t) => t.slice(0, 5)));
+  const missing: string[] = [];
+  for (const text of metaTexts) {
+    for (const word of words(text)) {
+      const hasDigit = /\d/.test(word);
+      if (hasDigit ? !exact.has(word) : word.length >= 4 && !prefixes.has(word.slice(0, 5))) missing.push(`"${word}" in "${text}"`);
+    }
+  }
+  return missing;
+}

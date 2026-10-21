@@ -30,3 +30,15 @@ export function transitionText(lang: keyof typeof TRANSITION_STRINGS, n: number,
   const t = TRANSITION_STRINGS[lang];
   return { title: t.title.replace("{n}", String(n)).replace("{total}", String(total)), hint: t.hint, button: t.button };
 }
+
+// TODO (Person 4, texts owner): placeholder wording for the always-visible button that leaves the running game for the
+// next one. No source text exists. `label` is the visible text, `aria` what a screen reader says. The "ro" lines are
+// an unproofread draft for the texts owner; only "en" is shown today.
+export const NEXT_STRINGS = {
+  en: { label: "Next game", aria: "Go to the next game" },
+  ro: { label: "Jocul următor", aria: "Treci la jocul următor" },
+} as const;
+
+export function nextGameText(lang: keyof typeof NEXT_STRINGS) {
+  return NEXT_STRINGS[lang];
+}

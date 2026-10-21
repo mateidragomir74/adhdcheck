@@ -8,15 +8,16 @@ const OFF = { camera: false, microphone: false };
 const el = () => ({ textContent: "" as string | null, className: "absolute inset-0", replaceChildren() {} }) as unknown as HTMLElement;
 const tick = () => new Promise((r) => setTimeout(r, 0));
 
-type Opts = { onComplete?: (m: SessionMetrics) => void; onError?: (e: unknown) => void };
+type Opts = { onComplete?: (m: SessionMetrics) => void; onUnusable?: () => void; onError?: (e: unknown) => void };
 function fakeMount() {
   const destroy = vi.fn();
+  const endEarly = vi.fn();
   let opts: Opts = {};
   const mount = vi.fn(async (_el: HTMLElement, o: Opts) => {
     opts = o;
-    return { destroy };
+    return { destroy, endEarly };
   });
-  return { destroy, mount, opts: () => opts };
+  return { destroy, endEarly, mount, opts: () => opts };
 }
 
 describe("sessionGame (the game a play link runs)", () => {
@@ -94,5 +95,47 @@ describe("createSessionGame destroy (R3-L1)", () => {
     createSessionGame(async () => mount)(el(), CHILD, OFF);
     await tick();
     expect(mount.mock.calls[0]?.[1]).toMatchObject({ childId: CHILD, autoStart: true });
+  });
+});
+
+// The visible "Next game" button during Lantern Watch: end the game now and keep the trials already recorded.
+describe("createSessionGame endEarly (Next game)", () => {
+  it("asks the mounted game to end, and resolves with the partial metrics it hands back", async () => {
+    const { endEarly, mount, opts } = fakeMount();
+    const run = createSessionGame(async () => mount)(el(), CHILD, OFF);
+    await tick();
+    run.endEarly?.();
+    expect(endEarly).toHaveBeenCalledTimes(1);
+    const partial = { session_id: "partial" } as unknown as SessionMetrics;
+    opts().onComplete?.(partial);
+    await expect(run.promise).resolves.toBe(partial);
+  });
+
+  it("resolves with null when the game has nothing valid to hand back (no calibration firefly tapped)", async () => {
+    const { mount, opts } = fakeMount();
+    const run = createSessionGame(async () => mount)(el(), CHILD, OFF);
+    await tick();
+    run.endEarly?.();
+    opts().onUnusable?.();
+    await expect(run.promise).resolves.toBeNull();
+  });
+
+  it("remembers a request made before the game finished mounting and applies it once mounted", async () => {
+    const { endEarly, mount } = fakeMount();
+    const run = createSessionGame(async () => mount)(el(), CHILD, OFF);
+    run.endEarly?.();
+    expect(endEarly).not.toHaveBeenCalled();
+    await tick();
+    await tick();
+    expect(endEarly).toHaveBeenCalledTimes(1);
+  });
+
+  it("does nothing after the page left", async () => {
+    const { endEarly, mount } = fakeMount();
+    const run = createSessionGame(async () => mount)(el(), CHILD, OFF);
+    await tick();
+    run.destroy();
+    run.endEarly?.();
+    expect(endEarly).not.toHaveBeenCalled();
   });
 });
