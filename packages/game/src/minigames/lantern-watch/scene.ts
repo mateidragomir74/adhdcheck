@@ -53,6 +53,10 @@ export interface SceneOptions {
   /** Created and resumed by the play page inside its start tap; the game uses it instead of making its own. */
   audioContext?: AudioContext;
   onComplete?: (metrics: SessionMetrics) => void;
+  /** Called once, in a frame, when the first calibration hit is recorded: from then on endEarly() yields valid metrics. */
+  onCanEndEarly?: () => void;
+  /** endEarly() was called but nothing valid can be built (no calibration firefly tapped yet): no metrics. */
+  onUnusable?: () => void;
   onError?: (err: unknown) => void;
 }
 
@@ -88,7 +92,7 @@ function uuidV4(): string {
 
 type LumaMode = "idle" | "wave" | "talk" | "hop" | "celebrate" | "rest";
 
-export function createLanternWatchScene(parent: HTMLElement, opts: SceneOptions): { destroy: () => void } {
+export function createLanternWatchScene(parent: HTMLElement, opts: SceneOptions): { destroy: () => void; endEarly: () => void } {
   const reduced = typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const owner = Math.random().toString(36).slice(2);
   parent.dataset.lwOwner = owner;
@@ -174,6 +178,9 @@ export function createLanternWatchScene(parent: HTMLElement, opts: SceneOptions)
   let nextFirework = 0;
   let happyUntil = 0;
   let completeAt = -1;
+  let canEndSignalled = false;
+  let endRequested = false; // endEarly(): handled in the next frame, where the frame timestamp is known
+  let endedEarly = false; // the result is handed back at once, with no celebration
   let metrics: SessionMetrics | null = null;
   let lastTs = 0;
   let raf = 0;
@@ -504,6 +511,22 @@ export function createLanternWatchScene(parent: HTMLElement, opts: SceneOptions)
 
     // 1. Measurement state machine. May light a lantern for this very frame.
     runner.frame(ts);
+    if (!canEndSignalled && runner.canEndEarly()) {
+      canEndSignalled = true;
+      opts.onCanEndEarly?.();
+    }
+    if (endRequested) {
+      endRequested = false;
+      const partial = built || metrics ? null : runner.endEarly(ts);
+      if (partial) {
+        built = partial;
+        endedEarly = true;
+      } else if (!built && !metrics) {
+        opts.onUnusable?.();
+      } else if (completeAt >= 0) {
+        completeAt = ts; // already finished and celebrating: hand the result back now
+      }
+    }
     ui.playEnabled(!runner.waitsForReady() || runner.canReady(ts));
     if (built && !metrics) {
       try {
@@ -528,7 +551,7 @@ export function createLanternWatchScene(parent: HTMLElement, opts: SceneOptions)
           trials: data.trials,
           offTargetTaps: data.off_target_taps,
         });
-        completeAt = ts + CELEBRATE_MS;
+        completeAt = endedEarly ? ts : ts + CELEBRATE_MS;
       } catch (err) {
         built = null;
         opts.onError?.(err);
@@ -628,6 +651,9 @@ export function createLanternWatchScene(parent: HTMLElement, opts: SceneOptions)
   if (opts.autoStart) runner.pointerDown(performance.now(), 0, 0, null);
 
   return {
+    endEarly: () => {
+      endRequested = true;
+    },
     destroy: () => {
       destroyed = true;
       cancelAnimationFrame(raf);

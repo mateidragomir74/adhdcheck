@@ -66,7 +66,7 @@ export function Landing() {
         <How t={t} />
         <Game t={t} />
         <Result t={t} />
-        <Offer t={t} />
+        <Parents t={t} />
         <Privacy t={t} />
         <Faq t={t} />
         <Final t={t} lang={lang} />
@@ -180,7 +180,8 @@ function Header({ t, lang, setLang }: { t: Dict; lang: Lang; setLang: (l: Lang) 
         <Logo />
         <nav aria-label="Main" className="hidden items-center gap-7 text-sm font-semibold text-lavender lg:flex">
           <a className="hover:text-moon" href="#how">{t.nav.how}</a>
-          <a className="hover:text-moon" href="#offer">{t.nav.offer}</a>
+          <a className="hover:text-moon" href="#doctors">{t.nav.doctor}</a>
+          <a className="hover:text-moon" href="#parents">{t.nav.parents}</a>
           <a className="hover:text-moon" href="#privacy">{t.nav.privacy}</a>
           <a className="hover:text-moon" href="#faq">{t.nav.faq}</a>
         </nav>
@@ -282,21 +283,10 @@ function Problem({ t }: { t: Dict }) {
         <ul className="mt-10 grid gap-x-10 gap-y-6 md:grid-cols-2">
           {t.problem.items.map((item, i) => (
             <li key={i} className="reveal border-t border-lavender/15 pt-5 text-lg leading-relaxed text-moon">
-              “{item}”
+              {item}
             </li>
           ))}
         </ul>
-
-        <p className="reveal mt-16 text-base font-semibold text-lavender">{t.problem.statsIntro}</p>
-        <div className="mt-5 grid gap-5 md:grid-cols-2">
-          {t.problem.stats.map((s, i) => (
-            <figure key={i} className="reveal dusk-surface flex flex-col p-6">
-              <p className="font-display text-4xl font-bold tabular-nums text-lantern md:text-5xl">{s.value}</p>
-              <p className="mt-3 flex-1 leading-relaxed text-moon">{s.label}</p>
-              <figcaption className="mt-5 border-t border-white/10 pt-3 text-sm text-lavender-muted">{s.source}</figcaption>
-            </figure>
-          ))}
-        </div>
         <p className="reveal mt-14 max-w-3xl font-display text-2xl font-semibold leading-snug md:text-3xl">{t.problem.punch}</p>
       </Container>
     </section>
@@ -314,6 +304,9 @@ function How({ t }: { t: Dict }) {
           <Kicker>{t.how.kicker}</Kicker>
           <H2>{t.how.title}</H2>
         </div>
+        <p className="reveal mt-6 max-w-3xl rounded-2xl border border-lantern/40 bg-lantern/10 p-5 text-lg leading-relaxed text-moon">
+          {t.how.note}
+        </p>
         <div className="mt-12 grid items-start gap-10 lg:grid-cols-[1.25fr_0.75fr]">
           <ol className="space-y-8">
             {t.how.steps.map((s, i) => (
@@ -407,16 +400,25 @@ function Game({ t }: { t: Dict }) {
   );
 }
 
-/* ---------- result preview ---------- */
+/* ---------- what the doctor gets (FR-33, FR-34, FR-48: only what the app produces today) ---------- */
 
 function Result({ t }: { t: Dict }) {
   return (
-    <section className="bg-dusk py-20 md:py-28">
-      <Container className="grid items-center gap-10 md:grid-cols-2">
+    <section id="doctors" className="bg-dusk py-20 md:py-28">
+      <Container className="grid items-start gap-10 md:grid-cols-2">
         <div className="reveal">
           <Kicker>{t.result.kicker}</Kicker>
           <H2>{t.result.title}</H2>
           <p className="mt-5 text-lg text-lavender">{t.result.sub}</p>
+          <ul className="mt-6 space-y-3">
+            {t.result.items.map((it) => (
+              <li key={it} className="flex items-start gap-3 text-lg text-moon">
+                <Check className="mt-1 size-5 shrink-0 text-river-soft" />
+                {it}
+              </li>
+            ))}
+          </ul>
+          <p className="mt-6 rounded-2xl border border-lantern/40 bg-lantern/10 p-5 text-lg leading-relaxed text-moon">{t.result.note}</p>
         </div>
         <div className="reveal space-y-3">
           {[t.result.a, t.result.b].map((h) => (
@@ -425,7 +427,7 @@ function Result({ t }: { t: Dict }) {
               {h}
             </p>
           ))}
-          <p className="flex items-start gap-3 rounded-2xl border border-lantern/40 bg-lantern/10 p-5 text-lg leading-relaxed text-moon">
+          <p className="flex items-start gap-3 rounded-2xl border border-white/15 bg-white/5 p-5 text-lg leading-relaxed text-moon">
             <Arrow className="mt-1 size-5 shrink-0 text-lantern" />
             {t.result.next}
           </p>
@@ -436,51 +438,30 @@ function Result({ t }: { t: Dict }) {
   );
 }
 
-/* ---------- offer: free vs paid ---------- */
+/* ---------- parents ---------- */
 
-function Offer({ t }: { t: Dict }) {
-  const { free, paid } = t.offer;
+function Parents({ t }: { t: Dict }) {
+  const p = t.parents;
   return (
-    <section id="offer" className="bg-dusk-deep py-20 md:py-28">
+    <section id="parents" className="bg-dusk-deep py-20 md:py-28">
       <Container>
         <div className="reveal max-w-3xl">
-          <Kicker>{t.offer.kicker}</Kicker>
-          <H2>{t.offer.title}</H2>
+          <Kicker>{p.kicker}</Kicker>
+          <H2>{p.title}</H2>
+          <p className="mt-4 text-lg text-lavender">{p.intro}</p>
         </div>
-        <div className="mt-12 grid gap-5 md:grid-cols-2">
-          <article className="reveal dusk-surface flex flex-col p-7">
-            <h3 className="font-display text-xl font-semibold text-river-soft">{free.label}</h3>
-            <p className="mt-2 font-display text-5xl font-bold">{free.price}</p>
-            <ul className="mt-6 space-y-3">
-              {free.items.map((it) => (
-                <li key={it} className="flex gap-3 text-lg text-moon">
-                  <Check className="mt-1 size-5 shrink-0 text-river-soft" />
-                  {it}
-                </li>
-              ))}
-            </ul>
-          </article>
-          <article className="reveal flex flex-col rounded-3xl border-2 border-lantern/60 bg-dusk-2 p-7">
-            <h3 className="font-display text-xl font-semibold text-lantern">{paid.label}</h3>
-            <p className="mt-2 font-display text-5xl font-bold">{paid.price}</p>
-            <p className="mt-1 font-semibold text-lavender">{paid.priceNote}</p>
-            <ul className="mt-6 space-y-3">
-              {paid.items.map((it) => (
-                <li key={it} className="flex gap-3 text-lg text-moon">
-                  <Check className="mt-1 size-5 shrink-0 text-lantern" />
-                  {it}
-                </li>
-              ))}
-            </ul>
-          </article>
-        </div>
-        <div className="reveal mt-8 flex flex-col items-start gap-5 sm:flex-row sm:items-center sm:justify-between">
-          <p className="flex items-start gap-3 text-lavender">
-            <Shield className="mt-0.5 size-6 shrink-0 text-river-soft" />
-            {t.offer.note}
-          </p>
-          <CtaButton className="w-full sm:w-auto">{t.offer.cta}</CtaButton>
-        </div>
+        <dl className="mt-12">
+          {p.items.map((it, i) => (
+            <div
+              key={it.title}
+              className={`reveal grid gap-1 border-t py-5 md:grid-cols-[minmax(0,20rem)_1fr] md:gap-10 ${i === 0 ? "border-lantern/60" : "border-lavender/15"}`}
+            >
+              <dt className="font-display text-xl font-semibold text-moon">{it.title}</dt>
+              <dd className="max-w-2xl text-lg leading-relaxed text-lavender">{it.body}</dd>
+            </div>
+          ))}
+        </dl>
+        <p className="reveal mt-6 border-t border-lavender/15 pt-6 text-lavender">{p.note}</p>
       </Container>
     </section>
   );

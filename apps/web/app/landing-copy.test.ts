@@ -66,20 +66,12 @@ describe("landing wording gate", () => {
   });
 
   for (const lang of ["ro", "en"] as const) {
-    // D-05b (DECIDED, Hatem, 2026-10-20): the detailed report is 9.99 EUR, a one-off payment per report, and
-    // checkout sells exactly that (mode "payment"). The page states that price and no other figure, and no
-    // subscription. The paid items list only what lib/report.ts buildReport puts in the PDF, and the result
-    // card does show percentages.
-    it(`states the decided price (9.99 EUR, one-off) and nothing the report or result does not hold (${lang})`, () => {
-      const t = content[lang];
-      const all = strings(t).join(" ").toLowerCase();
-      expect(t.offer.paid.price).toBe(lang === "en" ? "9.99 EUR" : "9,99 EUR");
-      expect(t.offer.paid.priceNote.toLowerCase()).toMatch(lang === "en" ? /one-off/ : /o singură dată/);
-      const figures = [...all.matchAll(/\d+[.,]\d{2}\s*(?:eur|€)/g)].map((m) => m[0].replace(",", "."));
-      expect(new Set(figures)).toEqual(new Set(["9.99 eur"]));
-      expect(all).not.toMatch(/price to be confirmed|preț în curs de stabilire|per month|pe lună|monthly|lunar|family plan|plan de familie/);
-      expect(t.offer.paid.items.join(" ").toLowerCase()).not.toMatch(/device|dispozitiv|quality|calitate|each mini-game|fiecare mini-joc/);
-      expect(t.result.sub.toLowerCase()).not.toMatch(/percent|procent/);
+    // Clinic strategy (pitch/clinic-strategy-2026-10-21.md, open point 3): pricing for clinics is not decided, so the
+    // page states no price, no subscription and no plan.
+    it(`states no price and no payment term (${lang})`, () => {
+      const all = strings(content[lang]).join(" ").toLowerCase();
+      expect(all).not.toMatch(/\d+[.,]?\d*\s*(?:eur|€|euro|lei|ron)\b/);
+      expect(all).not.toMatch(/subscription|abonament|per month|pe lună|monthly|lunar/);
     });
 
     it(`states the pilot status and the GDPR consent (${lang})`, () => {
@@ -87,13 +79,6 @@ describe("landing wording gate", () => {
       expect(t.footer.pilot).toMatch(/\bCE\b/);
       expect(t.hero.pilot).toMatch(/\bCE\b/);
       expect(t.final.consent.length).toBeGreaterThan(40);
-    });
-
-    it(`every statistic carries a source (${lang})`, () => {
-      for (const s of content[lang].problem.stats) {
-        expect(s.source.length).toBeGreaterThan(10);
-        expect(s.value).toMatch(/\d/);
-      }
     });
   }
 });

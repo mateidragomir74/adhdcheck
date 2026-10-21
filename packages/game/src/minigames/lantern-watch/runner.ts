@@ -404,6 +404,46 @@ export class LanternWatchRunner {
     this.show(this.cur, ts);
   }
 
+  /**
+   * The child (or an adult) ended Lantern Watch before the end (the "Next game" button). Returns what was recorded
+   * so far, copied: the closed calibration trials and the closed task trials; the trial in flight is not counted.
+   * Returns null when nothing valid can be built (SessionMetrics v1 needs a calibration median, so at least one
+   * calibration hit), when the run is over already or was ended already. The run is frozen afterwards (state "done"),
+   * and onComplete is not called: the caller owns the result.
+   */
+  /** Records that ending early would keep: the calibration round in progress, or everything recorded after it. */
+  private endEarlySource(): Trial[] | null {
+    if (this.state === "done") return null;
+    const inCalibration = this.state === "calib";
+    const afterCalibration = this.state !== "intro" && this.state !== "calib-intro" && this.state !== "calib-practice" && !inCalibration;
+    if (!(inCalibration || afterCalibration)) return null;
+    const source = inCalibration ? this.calibRecords : this.records;
+    return source.some((t) => t.type === "calibration" && t.outcome === "hit") ? source : null;
+  }
+
+  /** True when endEarly() would return valid data: a calibration hit is recorded (a closed trial) and the run is not over. */
+  canEndEarly(): boolean {
+    return this.endEarlySource() !== null;
+  }
+
+  endEarly(ts: number): RunData | null {
+    const source = this.endEarlySource();
+    if (!source) return null;
+    const data: RunData = {
+      trials: source.map((t) => ({ ...t })),
+      off_target_taps: this.offTarget.map((o) => ({ ...o })),
+      duration_ms: ts - this.t0,
+      t0: this.t0,
+    };
+    this.lastClosed = null;
+    this.cur = null;
+    this.settleUntil = null;
+    this.finishAt = null;
+    this.state = "done";
+    this.hooks.onState?.("done", ts);
+    return data;
+  }
+
   private complete(ts: number) {
     this.lastClosed = null; // the records are handed over below; nothing may rewrite them afterwards
     this.setState("done", ts);

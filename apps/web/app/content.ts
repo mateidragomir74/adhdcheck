@@ -1,13 +1,20 @@
-// Landing copy, RO + EN. Every statistic carries its source on the page (research/01).
+// Landing copy, RO + EN, for the clinic strategy (pitch/clinic-strategy-2026-10-21.md, decided by Hatem, 21 Oct 2026):
+// the app is sold to clinics; the parent books an appointment, the clinic sends a link, the parent registers, the child
+// plays at home, the doctor receives the result before the visit, with the parent's consent.
 // Wording rules (docs/02 section 2.3, research/05 block 9.3, MDR Art. 7): orientation, never diagnosis;
 // no likelihood, severity, accuracy, treatment or validation claim; nothing says the reader's child has a
-// condition. landing-copy.test.ts enforces this on every string below and on the rendered page.
-// Product facts used here, decided by the owner (2026-10-20): 10–\u206015 minute 3D game with Luma, the headline
-// and next step always free (decision A), only the PDF report is paid (D-05): 9.99 EUR, one-off per report,
-// reached through a link emailed to the parent who paid, behind login (docs/02 D-05b and R3-D1, DECIDED, Hatem,
-// 2026-10-20). Pilot, not CE marked. TODO (texts owner): approve the two FAQ answers on the report that say a link is emailed.
-// "10–\u206015": a word joiner keeps the range on one line.
+// condition. landing-copy.test.ts and landing-strategy.test.ts enforce this on every string below and on the rendered page.
+// What exists today: the 10–⁠15 minute 3D game with Luma, the result card (FR-33, FR-34) and the report (FR-48), used by
+// parents. What does NOT exist yet and is therefore written as how the pilot will work, never as live: the clinic sending the
+// link, the doctor receiving the result, any doctor portal or clinic account (docs/01 section 4, docs/02 FR-35 summary and the
+// clinician view PROPOSAL). A parent questionnaire is only a PROPOSAL (docs/02 FR-43, D-13), so the page says "game measures",
+// never "survey". No figure other than the age range 6–12 and the game length is used: "wasting hours" is the owner's
+// motivation, not a measured claim. No price (clinic pricing is not decided). No partnership, CE marking, ISO 13485,
+// certification or clinical validation is claimed, and the device class is not stated.
+// TODO (texts owner): proofread the RO text below and approve the new sentences (hero, steps, doctor section, parents
+// section, consent line in privacy, the four new FAQ answers, the pilot form).
 // Retention period is still open (docs/02 D-09), so the FAQ says so instead of giving a number.
+// "10–⁠15": a word joiner keeps the range on one line.
 
 export type Lang = "ro" | "en";
 
@@ -15,67 +22,59 @@ const ro = {
   meta: { skip: "Sari la conținut" },
   nav: {
     how: "Cum funcționează",
-    offer: "Ce primești",
+    doctor: "Pentru medici",
+    parents: "Pentru părinți",
     privacy: "Confidențialitate",
     faq: "Întrebări",
-    cta: "Vreau acces",
+    cta: "Clinică pilot",
     login: "Intră în cont",
     langLabel: "Limba",
   },
   hero: {
-    eyebrow: "Pentru părinții copiilor de 6–12 ani",
-    title: "Dă-i telefonul. Primești un pas următor clar.",
-    sub: "Copilul tău joacă o aventură liniștită de 10–\u206015 minute cu Luma. La final afli dacă merită să vorbești cu un specialist despre atenția și concentrarea lui, și la cine să mergi.",
-    cta: "Vreau acces gratuit",
+    eyebrow: "Pentru clinici și medici care văd copii de 6–12 ani",
+    title: "Primește informația înainte de consult.",
+    sub: "În pilot, clinica trimite părinților un link când fac programarea. Copilul joacă acasă o aventură liniștită de 10–⁠15 minute, iar medicul primește rezultatul înainte de consult, cu acordul părintelui.",
+    cta: "Devino clinică pilot",
     secondary: "Vezi cum funcționează",
-    trust: ["Rezultatul și pasul următor, gratuit", "Nimic de instalat", "Date găzduite în UE"],
+    trust: ["Nimic de instalat", "Rezultatul ajunge la medic doar cu acordul părintelui", "Date găzduite în UE"],
     pilot: "Pilot în dezvoltare. Nu are încă marcaj CE.",
     imgAlt: "Jocul Podul: Luma, un licurici turcoaz, lângă un pod de lemn peste un râu, noaptea, sub lună.",
   },
   problem: {
-    kicker: "Sună cunoscut?",
-    title: "Ai o întrebare simplă. Nimeni nu îți dă un răspuns clar.",
+    kicker: "Consultul de azi",
+    title: "Adunarea informațiilor nu ar trebui să ia timpul consultului.",
     items: [
-      "Învățătoarea pomenește din nou de concentrare, iar tu nu știi ce să faci cu asta.",
-      "Testele de pe internet îți cer să-ți notezi singur copilul de la 1 la 5, și fiecare spune altceva.",
-      "Familia îți spune să mai aștepți, că trece. Tu nu ești sigur că așteptarea e alegerea bună.",
-      "Ai vrea să întrebi un specialist, dar nu știi pe cine și ce să-i duci.",
+      "Răspunsul la întrebări ia timp în timpul consultului.",
+      "Strângerea informațiilor ia timp și înainte de consult.",
     ],
-    statsIntro: "Două lucruri pe care cercetarea le spune deja:",
-    stats: [
-      {
-        value: "4+ ani",
-        label: "poate dura așteptarea pentru serviciile publice de ADHD pentru copii în Anglia.",
-        source: "Independent ADHD Taskforce, Partea 1, NHS England, aprilie 2025 (PRN02031)",
-      },
-      {
-        value: "0,25",
-        label: "este acordul dintre părinți și profesori când evaluează același copil (kappa, unde 1 înseamnă acord deplin).",
-        source: "Fu et al., 2026, meta-analiză: 11 studii, 8.796 de copii și adolescenți (PMID 42865956)",
-      },
-    ],
-    punch: "ADHDCheck nu răspunde la întrebarea mare. Răspunde la prima: merită să vorbești cu cineva, și cu cine?",
+    punch: "ADHDCheck nu înlocuiește evaluarea medicului. Își propune să aducă informația înainte de consult.",
   },
   how: {
     kicker: "Cum funcționează",
-    title: "Trei pași. O singură seară.",
+    title: "Patru pași, de la programare la consult.",
     steps: [
       {
-        title: "Atingi Start",
-        time: "1 minut",
-        body: "Pe telefon sau tabletă, direct în browser. Nimic de instalat. Camera și microfonul rămân oprite dacă nu le pornești tu.",
+        title: "Părintele programează consultul",
+        time: "Programare",
+        body: "Părintele face programarea la medic, ca de obicei.",
       },
       {
-        title: "Copilul se joacă",
-        time: "10–\u206015 minute",
-        body: "Dă-i dispozitivul și uită-te cum se joacă: o aventură 3D cu Luma, de-a lungul unui râu, noaptea. Fără cronometru, fără sunete de „ai greșit”, iar copilul nu vede niciun scor.",
+        title: "Un link pentru înregistrare",
+        time: "Pilot",
+        body: "În pilot, clinica va trimite părintelui un link pentru a se înregistra și a adăuga copilul (un nume de joc și anul nașterii).",
       },
       {
-        title: "Primești pasul următor",
-        time: "imediat",
-        body: "La final, Luma îi cere copilului să-ți dea telefonul înapoi. Tu vezi rezultatul și la cine să mergi, gratuit.",
+        title: "Copilul joacă acasă",
+        time: "10–⁠15 minute",
+        body: "Copilul joacă aventura cu Luma pe telefon sau tabletă, în browser, împreună cu părintele. Nimic de instalat. Fără cronometru, fără sunete de „ai greșit”, iar copilul nu vede niciun scor.",
+      },
+      {
+        title: "Rezultatul, înainte de consult",
+        time: "Înainte de consult",
+        body: "Cu acordul părintelui, medicul va primi rezultatul înainte de consult, ca vizita să poată porni de la el.",
       },
     ],
+    note: "Așa este planificat să funcționeze serviciul în pilot. Astăzi aplicația este folosită de părinți: trimiterea linkului de către clinică și primirea rezultatului de către medic nu sunt încă active.",
     handback: "Gata! Acum dă-i telefonul înapoi mamei sau tatei.",
     handbackLabel: "Ce vede copilul la final",
   },
@@ -94,39 +93,27 @@ const ro = {
     calm: ["Fără ecrane de eșec", "Fără clasament", "Fără cronometru care grăbește", "Copilul nu vede niciun rezultat"],
   },
   result: {
-    kicker: "Ce vezi tu la final",
-    title: "Una din două propoziții simple. Apoi pasul următor.",
-    sub: "Propoziții simple, fără etichete. Ambele variante arată la fel, fără alarme roșii.",
+    kicker: "Partea medicului",
+    title: "Rezultatul, nu un diagnostic.",
+    sub: "Astăzi aplicația produce un card de rezultat și un raport pentru părinte. În pilot, medicul ar primi același conținut, doar cu acordul părintelui.",
     a: "Se recomandă o evaluare de specialitate.",
     b: "Activitatea nu indică o urmărire specifică.",
-    next: "Pasul următor: cu cine să vorbești (medicul de familie, pediatrul sau medicul psihiatru pentru copii) și ce să duci.",
+    items: ["Data sesiunii", "Una din cele două propoziții de mai sus", "Măsurătorile din joc", "Mențiunea că nu este un diagnostic"],
+    next: "Este o informație în plus pentru evaluarea medicului, nu o înlocuiește.",
+    note: "Astăzi nu există portal pentru medici, cont de clinică sau acces pentru medic. Modul în care rezultatul ajunge la medic se stabilește împreună cu clinicile pilot.",
     disclaimer: "Acesta nu este un diagnostic: doar un specialist poate pune unul.",
   },
-  offer: {
-    kicker: "Ce primești",
-    title: "Răspunsul e gratuit. Raportul e al tău, dacă îl vrei.",
-    free: {
-      label: "Mereu gratuit",
-      price: "0 EUR",
-      items: [
-        "Rezultatul: una din cele două propoziții",
-        "Pasul următor: la cine să mergi",
-        "Nu stă niciodată în spatele unei plăți",
-      ],
-    },
-    paid: {
-      label: "Raportul detaliat",
-      price: "9,99 EUR",
-      priceNote: "plătești o singură dată, fără abonament",
-      items: [
-        "Un PDF pe care îl duci la programare",
-        "Data sesiunii, rezultatul și mențiunea că nu este un diagnostic",
-        "Măsurătorile din joc",
-        "Pasul următor: la cine să mergi",
-      ],
-    },
-    note: "Decizi după ce vezi rezultatul gratuit. Nu îți cerem cardul ca să joci.",
-    cta: "Vreau acces gratuit",
+  parents: {
+    kicker: "Pentru părinți",
+    title: "Pentru părinți: ce primiți și ce faceți",
+    intro: "Clinica vă invită, copilul joacă acasă, iar dumneavoastră hotărâți dacă medicul vede rezultatul.",
+    items: [
+      { title: "Un link de la clinică", body: "După programare, în pilot, clinica vă va trimite un link pentru a vă înregistra." },
+      { title: "Vă înregistrați și adăugați copilul", body: "Un nume de joc și anul nașterii. Fără nume de familie, fără fotografie." },
+      { title: "Copilul joacă acasă", body: "O aventură liniștită de 10–⁠15 minute cu Luma, pe telefon sau tabletă, în browser. Nimic de instalat. Copilul nu vede niciun scor." },
+      { title: "Hotărâți dumneavoastră", body: "Rezultatul ajunge la medic doar cu acordul dumneavoastră. Vedeți rezultatul și pasul următor și în contul de părinte." },
+    ],
+    note: "Camera și microfonul pornesc oprite. Acesta nu este un diagnostic: doar un specialist poate pune unul.",
   },
   privacy: {
     kicker: "Confidențialitate",
@@ -134,22 +121,39 @@ const ro = {
     items: [
       { title: "Găzduit în UE", body: "Datele stau pe servere din Frankfurt, Germania." },
       { title: "Camera și microfonul, oprite", body: "Pornesc oprite. Dacă le activezi, sunt procesate pe dispozitiv. Nicio imagine și niciun sunet nu pleacă de pe telefon." },
-      { title: "Niciun scor pentru copil", body: "Copilul nu vede niciun scor și niciun rezultat. Doar tu." },
+      { title: "Medicul vede doar cu acordul tău", body: "În pilot, rezultatul ajunge la clinică doar dacă ești de acord." },
+      { title: "Niciun scor pentru copil", body: "Copilul nu vede niciun scor și niciun rezultat." },
       { title: "Cât mai puține date", body: "Un nume de joc și anul nașterii. Fără nume de familie, fără fotografie." },
       { title: "Ștergi oricând", body: "Poți șterge profilul copilului și toate sesiunile lui oricând vrei." },
     ],
   },
   faq: {
     kicker: "Întrebări",
-    title: "Ce întreabă părinții înainte să înceapă",
+    title: "Ce întreabă clinicile și părinții",
     items: [
       {
         q: "Este un diagnostic?",
-        a: "Nu. ADHDCheck nu pune diagnostice și nu înlocuiește un medic sau un psiholog. Te ajută să decizi dacă merită să vorbești cu un specialist despre atenția și concentrarea copilului, și cu cine.",
+        a: "Nu. ADHDCheck nu pune diagnostice și nu înlocuiește evaluarea unui medic sau psiholog. Produce măsurători din joc și un rezultat simplu, pe care medicul le poate lua în considerare.",
       },
       {
         q: "E gata de folosit?",
         a: "Este un pilot în dezvoltare. Nu are încă marcaj CE, iar pragurile nu au fost încă verificate într-un studiu clinic. De aceea rezultatul este o recomandare, nu un verdict.",
+      },
+      {
+        q: "Pentru cine este ADHDCheck?",
+        a: "Îl construim pentru clinicile și medicii care văd copii de 6–12 ani. Părinții îl folosesc acasă, invitați de clinică. Astăzi aplicația este folosită de părinți; partea pentru clinici este planificată pentru pilot.",
+      },
+      {
+        q: "Cum primește medicul rezultatul?",
+        a: "Este planificat pentru pilot și nu este încă activ. Astăzi nu există portal pentru medici sau cont de clinică. Rezultatul ajunge la medic doar cu acordul părintelui.",
+      },
+      {
+        q: "Trebuie părintele să trimită rezultatul?",
+        a: "Nu. Rezultatul ajunge la medic doar dacă părintele este de acord.",
+      },
+      {
+        q: "Înlocuiește chestionarele?",
+        a: "Nu. Aplicația oferă măsurători din joc și un rezultat simplu. Un chestionar pentru părinți nu face parte din aplicație astăzi, iar aplicația nu înlocuiește niciun chestionar și nici evaluarea medicului.",
       },
       {
         q: "Pentru ce vârstă este?",
@@ -168,8 +172,8 @@ const ro = {
         a: "Durata exactă de păstrare se stabilește în timpul pilotului și va fi scrisă în nota de confidențialitate înainte de lansare. Până atunci, poți șterge oricând profilul și toate sesiunile lui.",
       },
       {
-        q: "Ce primesc pentru 9,99 EUR?",
-        a: "Un raport PDF detaliat pentru acea sesiune, plătit o singură dată; după plată primești pe e-mail un link către raport, în spațiul tău de părinte. Fără abonament, nimic nu se reînnoiește. Rezultatul și pasul următor rămân gratuite, fie că îl cumperi, fie că nu.",
+        q: "Cât costă pentru o clinică?",
+        a: "Prețul pentru clinici nu este încă stabilit. Îl vom conveni cu clinicile pilot.",
       },
       {
         q: "Copilul ia deja medicamente. Mai are sens?",
@@ -178,14 +182,14 @@ const ro = {
     ],
   },
   final: {
-    title: "10–\u206015 minute de joc. Un pas următor clar.",
-    sub: "ADHDCheck este acum în pilot. Lasă-ne adresa ta și îți trimitem linkul imediat ce poți juca.",
-    formLabel: "Adresa ta de email",
-    formPlaceholder: "nume@exemplu.ro",
-    formCta: "Vreau acces gratuit",
-    formNote: "Un singur email când poți începe. Fără spam.",
-    consent: "Când te înscrii, ești de acord să păstrăm adresa ta de email și limba aleasă ca să te anunțăm când poți juca. Nu le folosim pentru altceva și poți cere oricând să le ștergem.",
-    formSuccess: "Gata! Ești pe listă. Îți scriem imediat ce poți începe.",
+    title: "Vrei să îl încerci în clinica ta?",
+    sub: "ADHDCheck este acum în pilot. Lasă adresa de email a clinicii și îți scriem despre participarea ca clinică pilot.",
+    formLabel: "Adresa de email a clinicii",
+    formPlaceholder: "clinica@exemplu.ro",
+    formCta: "Devino clinică pilot",
+    formNote: "Un singur email despre pilot. Fără spam.",
+    consent: "Când te înscrii, ești de acord să păstrăm adresa ta de email și limba aleasă ca să îți scriem despre pilot. Nu le folosim pentru altceva și poți cere oricând să le ștergem.",
+    formSuccess: "Gata! Ești pe listă. Îți scriem despre pilot.",
     formError: "Adresa nu pare corectă. Verifică și încearcă din nou.",
     formFail: "Ceva n-a mers. Încearcă din nou peste câteva secunde.",
     sending: "Se trimite…",
@@ -195,7 +199,7 @@ const ro = {
     disclaimer: "ADHDCheck este un instrument de orientare. Nu pune diagnostice și nu înlocuiește evaluarea unui medic sau psiholog. Pragurile folosite sunt ilustrative și nu au fost încă verificate într-un studiu clinic.",
     event: "Proiect realizat la hackathonul BeaHealth 2026.",
   },
-  sticky: "Vreau acces gratuit",
+  sticky: "Devino clinică pilot",
 };
 
 export type Dict = typeof ro;
@@ -204,118 +208,98 @@ const en: Dict = {
   meta: { skip: "Skip to content" },
   nav: {
     how: "How it works",
-    offer: "What you get",
+    doctor: "For doctors",
+    parents: "For parents",
     privacy: "Privacy",
     faq: "FAQ",
-    cta: "Get access",
+    cta: "Pilot clinic",
     login: "Log in",
     langLabel: "Language",
   },
   hero: {
-    eyebrow: "For parents of children aged 6–12",
-    title: "Hand them the phone. Get a clear next step.",
-    sub: "Your child plays a calm 10–\u206015 minute adventure with Luma. When it ends, you learn whether it is worth talking to a professional about their attention and focus, and who to see.",
-    cta: "Get free early access",
+    eyebrow: "For clinics and doctors who see children aged 6–12",
+    title: "Get the information before the appointment.",
+    sub: "In the pilot, the clinic sends parents a link when they book. The child plays a calm 10–⁠15 minute adventure at home, and the doctor gets the result before the visit, with the parent's consent.",
+    cta: "Become a pilot clinic",
     secondary: "See how it works",
-    trust: ["Result and next step free", "Nothing to install", "Data hosted in the EU"],
+    trust: ["Nothing to install", "The result reaches the doctor only with the parent's consent", "Data hosted in the EU"],
     pilot: "Pilot in development. Not CE marked yet.",
     imgAlt: "The Bridge Wait game: Luma, a teal firefly, next to a wooden bridge over a river at night, under the moon.",
   },
   problem: {
-    kicker: "Sound familiar?",
-    title: "You have a simple question. Nobody gives you a straight answer.",
+    kicker: "The visit today",
+    title: "Gathering information should not take the time of the visit.",
     items: [
-      "The teacher mentions focus again, and you are not sure what to do with it.",
-      "Online quizzes ask you to rate your own child from 1 to 5, and every one says something different.",
-      "Family says wait, it will pass. You are not sure waiting is the right call.",
-      "You would like to ask a professional, but you do not know who, or what to bring.",
+      "Answering questions takes time during the visit.",
+      "Getting the information together takes time before the visit.",
     ],
-    statsIntro: "Two things the research already tells us:",
-    stats: [
-      {
-        value: "4+ years",
-        label: "can be the wait for children's ADHD services in England's public health service.",
-        source: "Independent ADHD Taskforce, Part 1, NHS England, April 2025 (PRN02031)",
-      },
-      {
-        value: "0.25",
-        label: "is the agreement between parents and teachers rating the same child (kappa, where 1 is full agreement).",
-        source: "Fu et al., 2026, meta-analysis: 11 studies, 8,796 children and adolescents (PMID 42865956)",
-      },
-    ],
-    punch: "ADHDCheck does not answer the big question. It answers the first one: is it worth talking to someone, and to whom?",
+    punch: "ADHDCheck does not replace the doctor's assessment. It aims to bring the information before the visit.",
   },
   how: {
     kicker: "How it works",
-    title: "Three steps. One evening.",
+    title: "Four steps, from booking to the visit.",
     steps: [
       {
-        title: "You tap Start",
-        time: "1 minute",
-        body: "On a phone or tablet, in the browser. Nothing to install. Camera and microphone stay off unless you switch them on.",
+        title: "The parent books an appointment",
+        time: "Booking",
+        body: "The parent books the appointment with the doctor, as usual.",
       },
       {
-        title: "Your child plays",
-        time: "10–\u206015 minutes",
-        body: "Hand over the device and watch them play: a 3D adventure with Luma along a river at night. No timer, no “wrong!” sounds, and your child never sees a score.",
+        title: "A link to register",
+        time: "Pilot",
+        body: "In the pilot, the clinic will send the parent a link to register and add the child (a nickname and a birth year).",
       },
       {
-        title: "You get the next step",
-        time: "right away",
-        body: "At the end, Luma asks your child to give the phone back. You see the result and who to talk to, free.",
+        title: "The child plays at home",
+        time: "10–⁠15 minutes",
+        body: "The child plays the adventure with Luma on a phone or tablet, in the browser, together with the parent. Nothing to install. No timer, no “wrong!” sounds, and the child never sees a score.",
+      },
+      {
+        title: "Result before the visit",
+        time: "Before the visit",
+        body: "With the parent's consent, the doctor will receive the result before the visit, so the visit can start from it.",
       },
     ],
+    note: "This is how the service is planned to work in the pilot. Today the app is used by parents: sending the link from the clinic and the doctor receiving the result are not live yet.",
     handback: "All done! Now give the phone back to mum or dad.",
-    handbackLabel: "What your child sees at the end",
+    handbackLabel: "What the child sees at the end",
   },
   game: {
     kicker: "The game",
-    title: "For your child it is an adventure, not a test.",
+    title: "For the child it is an adventure, not a test.",
     sub: "Short mini-games in one world: the night river, the fireflies and Luma.",
     games: [
       { name: "Bridge Wait", what: "Wait for the signal, then cross the river.", img: "/landing/bridge-wait-portrait.jpg" },
       { name: "Treasure Choice", what: "One gem now, or two a little later?", img: "/landing/treasure-choice-play.jpg" },
-      { name: "Star Path", what: "Stars light up one by one. Your child traces the same path.", img: "/landing/star-path-play.jpg" },
+      { name: "Star Path", what: "Stars light up one by one. The child traces the same path.", img: "/landing/star-path-play.jpg" },
       { name: "Route Planner", what: "Help Luma pick up the glowing seeds, one square at a time.", img: "/landing/route-planner-play.jpg" },
     ],
     core: "The main attention game, with the fireflies, is still in development.",
     coreLabel: "In development",
-    calm: ["No failure screens", "No ranking", "No timer pressure", "Your child never sees a result"],
+    calm: ["No failure screens", "No ranking", "No timer pressure", "The child never sees a result"],
   },
   result: {
-    kicker: "What you see at the end",
-    title: "One of two plain sentences. Then the next step.",
-    sub: "Plain sentences, no labels. Both look the same, with no red alarm for either.",
+    kicker: "The doctor's side",
+    title: "The result, not a diagnosis.",
+    sub: "Today the app produces a result card and a report for the parent. In the pilot, the doctor would receive the same content, only with the parent's consent.",
     a: "A professional assessment is recommended.",
     b: "No specific follow-up indicated by this activity.",
-    next: "Next step: who to talk to (your GP, a paediatrician or a child psychiatrist) and what to bring.",
+    items: ["The session date", "One of the two sentences above", "The game measures", "A note that this is not a diagnosis"],
+    next: "It is one input to the doctor's own assessment, never a replacement for it.",
+    note: "Today there is no doctor portal, no clinic account and no doctor access. How the result reaches the doctor is being defined with the pilot clinics.",
     disclaimer: "This is not a diagnosis. Only a professional can make one.",
   },
-  offer: {
-    kicker: "What you get",
-    title: "The answer is free. The report is yours if you want it.",
-    free: {
-      label: "Always free",
-      price: "0 EUR",
-      items: [
-        "The result: one of the two sentences",
-        "The next step: who to see",
-        "Never behind a paywall",
-      ],
-    },
-    paid: {
-      label: "Detailed report",
-      price: "9.99 EUR",
-      priceNote: "one-off, no subscription",
-      items: [
-        "A PDF to bring to the appointment",
-        "The session date, the result and the note that this is not a diagnosis",
-        "The game measures",
-        "The next step: who to see",
-      ],
-    },
-    note: "You decide after you see the free result. No card needed to play.",
-    cta: "Get free early access",
+  parents: {
+    kicker: "For parents",
+    title: "For parents: what you receive and do",
+    intro: "The clinic invites you, your child plays at home, and you decide whether the doctor sees the result.",
+    items: [
+      { title: "A link from the clinic", body: "After you book, in the pilot, the clinic will send you a link to register." },
+      { title: "You register and add your child", body: "A nickname and a birth year. No surname, no photo." },
+      { title: "Your child plays at home", body: "A calm 10–⁠15 minute adventure with Luma, on a phone or tablet, in the browser. Nothing to install. Your child never sees a score." },
+      { title: "You decide", body: "The result goes to the doctor only with your consent. You also see the result and the next step in your parent area." },
+    ],
+    note: "Camera and microphone start off. This is not a diagnosis. Only a professional can make one.",
   },
   privacy: {
     kicker: "Privacy",
@@ -323,22 +307,39 @@ const en: Dict = {
     items: [
       { title: "Hosted in the EU", body: "Data is stored on servers in Frankfurt, Germany." },
       { title: "Camera and mic off", body: "Both start off. If you switch them on, they are processed on the device. No video or audio leaves the phone." },
-      { title: "No score for the child", body: "Your child never sees a score or a result. Only you do." },
+      { title: "The doctor sees it only with your consent", body: "In the pilot, the result goes to the clinic only if you agree." },
+      { title: "No score for the child", body: "The child never sees a score or a result." },
       { title: "As little data as possible", body: "A nickname and a birth year. No surname, no photo." },
       { title: "Delete any time", body: "You can delete your child's profile and all its sessions whenever you want." },
     ],
   },
   faq: {
     kicker: "FAQ",
-    title: "What parents ask before they start",
+    title: "What clinics and parents ask",
     items: [
       {
         q: "Is this a diagnosis?",
-        a: "No. ADHDCheck does not diagnose and does not replace a doctor or psychologist. It helps you decide whether to talk to a professional about your child's attention and focus, and who to see.",
+        a: "No. ADHDCheck does not diagnose and does not replace the assessment of a doctor or psychologist. It produces game measures and a plain result that the doctor can take into account.",
       },
       {
         q: "Is it ready to use?",
         a: "It is a pilot in development. It is not CE marked yet, and its thresholds have not yet been checked in a clinical study. That is why the result is a recommendation, not a verdict.",
+      },
+      {
+        q: "Who is ADHDCheck for?",
+        a: "We are building it for clinics and doctors who see children aged 6 to 12. Parents use it at home, invited by the clinic. Today the app is used by parents; the clinic side is planned for the pilot.",
+      },
+      {
+        q: "How does the doctor get the result?",
+        a: "This is planned for the pilot and is not live yet. There is no doctor portal or clinic account today. The result goes to the doctor only with the parent's consent.",
+      },
+      {
+        q: "Does the parent have to share the result?",
+        a: "No. The result goes to the doctor only if the parent agrees.",
+      },
+      {
+        q: "Does it replace the questionnaires?",
+        a: "No. The app gives game measures and a plain result. A parent questionnaire is not part of the app today, and the app does not replace any questionnaire or the doctor's assessment.",
       },
       {
         q: "What age is it for?",
@@ -350,15 +351,15 @@ const en: Dict = {
       },
       {
         q: "Is my child's data safe?",
-        a: "We keep only a nickname, a birth year and how your child played (taps and timings). Data is stored on servers in Frankfurt. Camera and microphone are off by default; if you switch them on, they are processed on the device and only counts and durations leave it, never images or sound. The game works the same without them.",
+        a: "We keep only a nickname, a birth year and how the child played (taps and timings). Data is stored on servers in Frankfurt. Camera and microphone are off by default; if you switch them on, they are processed on the device and only counts and durations leave it, never images or sound. The game works the same without them.",
       },
       {
         q: "How long do you keep the data?",
         a: "The exact retention period is being set during the pilot and will be written in the privacy notice before launch. Until then, you can delete the profile and all its sessions at any time.",
       },
       {
-        q: "What do I get for 9.99 EUR?",
-        a: "One detailed PDF report for that session, paid once; after payment we email you a link to it in your parent area. No subscription, nothing renews. The result and the next step stay free whether you buy it or not.",
+        q: "What does it cost a clinic?",
+        a: "Pricing for clinics has not been decided yet. We will agree it with the pilot clinics.",
       },
       {
         q: "My child already takes medication. Does it still make sense?",
@@ -367,14 +368,14 @@ const en: Dict = {
     ],
   },
   final: {
-    title: "10–\u206015 minutes of play. One clear next step.",
-    sub: "ADHDCheck is in a pilot right now. Leave your email and we will send you the link as soon as you can play.",
-    formLabel: "Your email address",
-    formPlaceholder: "name@example.com",
-    formCta: "Get free early access",
-    formNote: "One email when you can start. No spam.",
-    consent: "By joining, you agree that we store your email address and chosen language to tell you when you can play. We use them for nothing else, and you can ask us to delete them at any time.",
-    formSuccess: "Done! You are on the list. We will email you as soon as you can start.",
+    title: "Want to try it in your clinic?",
+    sub: "ADHDCheck is in a pilot right now. Leave your clinic's email and we will write to you about taking part as a pilot clinic.",
+    formLabel: "Your clinic's email address",
+    formPlaceholder: "clinic@example.com",
+    formCta: "Become a pilot clinic",
+    formNote: "One email about the pilot. No spam.",
+    consent: "By joining, you agree that we store your email address and chosen language to write to you about the pilot. We use them for nothing else, and you can ask us to delete them at any time.",
+    formSuccess: "Done! You are on the list. We will write to you about the pilot.",
     formError: "That address does not look right. Please check and try again.",
     formFail: "Something went wrong. Please try again in a few seconds.",
     sending: "Sending…",
@@ -384,7 +385,7 @@ const en: Dict = {
     disclaimer: "ADHDCheck is an orientation tool. It does not diagnose and does not replace an assessment by a doctor or psychologist. Thresholds are illustrative and have not yet been checked in a clinical study.",
     event: "Built at the BeaHealth 2026 hackathon.",
   },
-  sticky: "Get free early access",
+  sticky: "Become a pilot clinic",
 };
 
 export const content: Record<Lang, Dict> = { ro, en };
