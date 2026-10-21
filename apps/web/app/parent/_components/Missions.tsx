@@ -6,7 +6,7 @@ import { attempt } from "@/lib/attempt";
 import { addMission, deleteMission, setMissionDone, type MissionRow } from "@/lib/data/parent";
 import { MISSIONS } from "@/lib/missions";
 import { S } from "../strings";
-import { ErrorNote, buttonQuiet, field } from "./shell";
+import { ErrorNote, buttonQuiet, field, postJson } from "./shell";
 
 // FR-37: the parent picks missions from the catalogue and ticks them off. Nothing here reads a score
 // (NFR-52): missions are never chosen from a result.
@@ -81,7 +81,12 @@ export function Missions({
         className="flex gap-2"
         onSubmit={(e) => {
           e.preventDefault();
-          void run(async () => [...missions, await addMission(client, childId, pick)]);
+          void run(async () => {
+            const added = await addMission(client, childId, pick);
+            // FR-50 "new mission" email: best effort, never blocks or undoes the mission.
+            void postJson("/api/emails/mission", { mission_id: added.id }).catch(() => {});
+            return [...missions, added];
+          });
         }}
       >
         <select aria-label={S.missions.title} value={pick} onChange={(e) => setPick(e.target.value)} className={field}>

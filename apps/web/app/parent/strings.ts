@@ -42,14 +42,40 @@ export const S = {
     lastResult: "Last result",
     noResult: "No game played yet",
   },
+  // FR-50 weekly summary email, placeholder wording (TODO texts owner).
+  email: {
+    title: "Email summary",
+    hint: "Get a short email with a link back to this page. It never contains results.",
+    send: "Email me this week's summary",
+    sent: "Sent. Check your inbox.",
+    skipped: "Email is not set up yet.",
+    failed: "The email could not be sent.",
+  },
   demo: { label: "Demo account", reset: "Reset demo", resetting: "Resetting…", done: "Demo data restored." },
   billing: {
-    title: "Family plan",
-    active: "Your plan is active.",
-    inactive: "Missions and progress tracking come with the family plan. Results and next steps are always free.",
-    subscribe: "Subscribe (test mode)",
-    manage: "Manage plan",
-    unavailable: "Billing is not set up yet.",
+    unavailable: "Payment is not available right now. Please try again later.",
+  },
+  // D-05 and D-05b (DECIDED, Hatem, 2026-10-20): only the detailed report is paid, 9.99 EUR, one-off per
+  // report; the parent who paid gets an emailed link to it (R3-D1). offerTitle and sentAndHere are the owner's words;
+  // TODO (texts owner): sentAndHere says "Sent to your email" and now what is sent is a link, so confirm or reword; the rest is
+  // placeholder wording for the texts owner (shared-texts-claims-pitch.md). offerText lists only what
+  // lib/report.ts buildReport puts in the PDF.
+  report: {
+    offerTitle: "Get the detailed report, 9.99 EUR, one-off",
+    offerText:
+      "A PDF of this session to bring to an appointment: the date, the result with the note that it is not a diagnosis, the game measures and the next step. You pay once for this report. Nothing renews.",
+    offerFree: "The result and the next step above stay free, whether you buy the report or not.",
+    buy: "Get the report",
+    buying: "Opening the payment page…",
+    // R3-P1: placeholder wording for the texts owner (TODO), shown while a Checkout was opened and not paid.
+    inProgress: "A payment for this report was started and is not confirmed yet.",
+    resume: "Continue the payment",
+    confirming: "Thank you. We are confirming the payment. This can take a moment; you can reload this page.",
+    sentAndHere: "Sent to your email, and available here",
+    availableHere: "Your report is available here.",
+    checking: "Checking the report…",
+    download: "Download the report (PDF)",
+    preparing: "Preparing the report…",
   },
   session: {
     title: "Play a game",
@@ -60,6 +86,15 @@ export const S = {
     newResult: "New result",
     failed: "Could not create a game link. Try again.",
     cancel: "Cancel",
+  },
+  // NFR-04 consent to processing, asked once before the first game. Placeholder wording: TODO texts owner
+  // (docs/02 NFR-04 "Consent text: TODO"). When the final text lands, change PROCESSING_CONSENT_VERSION.
+  processing: {
+    title: "Before the first game",
+    explain:
+      "To show you a result, we keep what the game records while your child plays: taps and their timing, linked to the nickname and birth year you entered. Deleting the child deletes all of it.",
+    agree: "I am this child's parent or legal guardian, and I agree to this.",
+    button: "Continue",
   },
   // FR-70 consent, placeholder wording for the texts owner (shared-texts-claims-pitch.md, step 1).
   consent: {
@@ -106,6 +141,8 @@ export const S = {
   },
   child: {
     back: "All children",
+    // R6-9: a link from the report email opened while logged in as another parent. TODO (texts owner): approve.
+    notFound: "This page is not available for the account you are logged in with. Use Log out, then log in with the account that bought the report.",
     history: "Earlier games",
     delete: "Delete child and all data",
     confirmDelete: "Delete this child and every game and mission? This cannot be undone.",

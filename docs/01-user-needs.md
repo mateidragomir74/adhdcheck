@@ -27,9 +27,9 @@ How to read a need:
 | Group | Who | Interacts with | Account |
 |---|---|---|---|
 | Child | Child aged 6 to 12 who plays the game | Child app (browser game on a tablet or phone) | None. The child never has an account (03 section 5) |
-| Parent or caregiver | Adult responsible for the child | Parent web app (account, child profile, result card, missions, subscription, emails) | Yes, Supabase Auth (03 section 5) |
+| Parent or caregiver | Adult responsible for the child | Parent web app (account, child profile, result card, missions, one-off paid report, emails) | Yes, Supabase Auth (03 section 5) |
 | Clinician | GP, paediatrician or child psychiatrist who receives a referral or a parent bringing the result | A summary the parent shares (no clinician account in the MVP, PROPOSAL) | None in the MVP |
-| Payer or buyer | Whoever pays: the family through the subscription, and later possibly an insurer, a health system or a school (team assumption, to validate; to be aligned with the business model canvas `research/05` when available). The consumer subscriptions found in 02 Part 3 are therapy-only, and the ADHD assessment tools found are sold to clinicians | Pitch, evidence, regulatory and privacy material | None in the MVP |
+| Payer or buyer | Whoever pays: the family, one-off per detailed report (D-05b), and later possibly an insurer, a health system or a school (team assumption, to validate; to be aligned with the business model canvas `research/05` when available). The consumer subscriptions found in 02 Part 3 are therapy-only, and the ADHD assessment tools found are sold to clinicians | Pitch, evidence, regulatory and privacy material | None in the MVP |
 
 ## 2. Child (6 to 12)
 
@@ -62,7 +62,7 @@ How to read a need:
 
 - Has a concern about the child's attention, or was advised by a teacher, and may be on a long waiting list. In England, NHS waiting times are "up to 4+ years for children" (01 [web-A], NHS England ADHD Taskforce Part 1, 2025).
 - Not a clinician. Reads the result on a phone or laptop, possibly alone, possibly anxious (team assumption, to validate).
-- Creates an account, a child profile, launches a session on the child's device, reads the result card, follows missions, may subscribe (03 sections 5, 6, 9).
+- Creates an account, a child profile, launches a session on the child's device, reads the result card, follows missions, may buy the detailed report once per report (03 sections 5, 6, 9; D-05b).
 
 ### 3.2 Needs
 
@@ -80,7 +80,7 @@ How to read a need:
 | UN-20 | The parent needs to see the child's sessions over time and the missions done, so that they can follow change and bring a history to a clinician. | Should | Team assumption, to validate (subscription idea, `TODO.md`). Gameplay metric change tracked attention-test change in children, with a small effect (beta 0.06) (01 [36], PMID 39128918). | FR-37, FR-38 |
 | UN-21 | The parent needs a short summary they can show or send to a clinician, so that the consultation starts from the facts. | Should | Team assumption, to validate. | FR-35, FR-39 |
 | UN-22 | **Child data protection.** The parent needs to control the child's data (see what is stored, delete the child profile and all its sessions), so that they stay in charge of sensitive data about their child. | Must | GDPR context and data minimisation in 03 section 5. Health-like data are sensitive (03 section 5). | FR-41, NFR-01 to NFR-07 |
-| UN-23 | The parent needs to subscribe and cancel without friction, with the price and what it includes shown before paying, so that they are never trapped in a subscription. | Should | Stripe Checkout and Customer Portal (03 section 6). Price and content: TODO (open decision in `TODO.md`). No dark patterns: team assumption, to validate. | FR-45, FR-46, FR-47, NFR-60 |
+| UN-23 | The parent needs to see the price and what it includes before paying for the detailed report, and to pay once per report with nothing to cancel, so that they are never trapped in a recurring charge. | Should | Stripe Checkout, one-off payment of 9.99 EUR per report (D-05b, decided by Hatem, 2026-10-20). No dark patterns: team assumption, to validate. | FR-45, FR-46, FR-47, NFR-60 |
 | UN-24 | The parent needs emails that remind and summarise without exposing the child's results in the inbox, so that a shared or work mailbox does not leak sensitive data. | Should | "Emails carry no raw scores; link to the dashboard" (03 section 7). | FR-50, NFR-05 |
 | UN-25 | The parent needs the result to appear on their screen without manual refresh after the child finishes, so that the hand-off feels immediate. | Could | 03 section 9 (Realtime, fallback polling every 2 s; Realtime capability unverified). | FR-39, NFR-36 |
 | UN-35 | The parent needs to report the behaviours a game cannot observe (at home and at school), so that the orientation does not rest on the game alone. | Should | 04 section 2 rates 7 of the 18 DSM symptoms as not observable in a game. The NICE NG87 summary requires symptoms in "two or more important settings" (01 [web-B], summary copy). Parent report alone is weak (kappa 0.25, 01 [24], PMID 42865956), so it complements the game and does not replace it. | FR-43 |
@@ -108,7 +108,7 @@ How to read a need:
 ### 5.1 Context of use
 
 - For the hackathon, the jury acts as a proxy buyer (team assumption, to validate).
-- Families pay a subscription (03 section 6; price TODO). Other payers (insurers, health systems, schools): to be aligned with `research/05` when available.
+- Families pay 9.99 EUR once per detailed report (D-05b, decided 2026-10-20), no subscription. Other payers (insurers, health systems, schools): to be aligned with `research/05` when available.
 - No product combining game-based screening, ongoing monitoring and a parent-paid subscription for children in the EU was found, and no cleared or CE-marked ADHD assessment that reports to lay users was found (02 Part 3, items 1 and 2). This is both the differentiation and the regulatory burden.
 
 ### 5.2 Needs

@@ -12,6 +12,7 @@ import { readFileSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import { validSessionMetrics } from "../packages/contracts/src/fixtures/session-metrics.valid.ts";
+import { PROCESSING_CONSENT_VERSION } from "../apps/web/lib/processing-consent.ts";
 
 const args = process.argv.slice(2);
 const flag = (name: string) => {
@@ -133,7 +134,10 @@ const subscribed = await new Promise<string>((resolve) => {
 step(subscribed === "SUBSCRIBED", "live results subscribed", subscribed);
 await new Promise((r) => setTimeout(r, 3000)); // Realtime can miss rows written in the first seconds.
 
-// 6. QR: the parent creates a play link, the tablet opens it (FR-01, FR-32).
+// 6. QR: the parent agrees to processing once, as the parent page asks (NFR-04), then creates a play link
+// and the tablet opens it (FR-01, FR-32).
+const agreed = await db.from("processing_consents").insert({ version: PROCESSING_CONSENT_VERSION });
+step(!agreed.error, "parent consents to processing", agreed.error?.message ?? "");
 res = await fetch(`${base}/api/play-links`, { method: "POST", headers: { ...json, cookie }, body: JSON.stringify({ child_id: child.id }) });
 const link = await readJson(res);
 const code = typeof link.code === "string" ? link.code : "";

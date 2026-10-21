@@ -34,12 +34,12 @@ Research in `research/`. Every figure in a pitch must come from those files with
 - [x] DECIDED 2026-10-19 (D-17): web first, with camera and microphone in the browser game, processed on the device (features only, no video or audio leaves the device); native mobile app later. Research: `research/06-camera-microphone-acquisition.md`. Requirements FR-70 to FR-74 added to `docs/02` section 4.1c; contract extension PC-04 proposed.
 - [ ] Work split confirmed with names: `docs/04-work-split.md`
 - [ ] Final output wording for parents (proposal: "a professional assessment is recommended" or "no specific follow-up indicated by this activity"; never "ADHD likely")
-- [ ] Pricing and subscription content
+- [x] Pricing: 9.99 EUR, one-off per report, the parent who paid gets an email with a link to the report behind login, no attachment (docs/02 D-05b and R3-D1 / D-05c, DECIDED, Hatem, 2026-10-20)
 - [ ] Gadget: which one, and is it a medical device itself
 
 ## Build (48 h plan in `research/03-tech-stack.md`)
 - [ ] Game (Phaser 4, go/no-go style mechanics)
 - [ ] Scoring module (transparent rules, illustrative thresholds)
 - [ ] Backend (Supabase, Frankfurt region)
-- [ ] Parent dashboard and Stripe test subscription
+- [ ] Parent dashboard and Stripe test one-off report purchase
 - [ ] Pitch deck and demo script

@@ -136,7 +136,16 @@ export interface World {
 export const LANTERN_OFF = new Color(0x3d3352);
 export const LANTERN_ON = new Color(0xffe58a);
 
-export function buildWorld(scene: Scene, grad: DataTexture, outlineMat: MeshBasicMaterial): World {
+export interface WorldOptions {
+  /** The decorative lily pads and lotus in the near river. Default true. Route Planner turns them off: its board
+   * of pads sits there, and a decorative pad would read as one more pad to tap. */
+  lilyPads?: boolean;
+  /** false: the bridge posts carry no lamp (Lantern Watch puts its own lanterns on the deck). Default true. */
+  postLamps?: boolean;
+}
+
+export function buildWorld(scene: Scene, grad: DataTexture, outlineMat: MeshBasicMaterial, opts: WorldOptions = {}): World {
+  const postLamps = opts.postLamps ?? true;
   const rnd = mulberry32(2024);
   const toon = (c: number) => new MeshToonMaterial({ color: new Color(c), gradientMap: grad });
   const white = toon(0xffffff); // instanced meshes tint it per instance
@@ -174,13 +183,13 @@ export function buildWorld(scene: Scene, grad: DataTexture, outlineMat: MeshBasi
     const p = new Mesh(padGeo, padMat);
     p.scale.set(r, 1, r);
     p.position.set(x, WATER_Y + 0.02, z);
-    p.rotation.y = rnd() * 6;
-    scene.add(p);
+    p.rotation.y = rnd() * 6; // drawn even when the pads are off, so the rest of the seeded layout is unchanged
+    if (opts.lilyPads !== false) scene.add(p);
   }
   const lotus = new Mesh(new SphereGeometry(0.13, 12, 8), toon(0xff9cc4));
   lotus.scale.y = 0.7;
   lotus.position.set(1.6, WATER_Y + 0.1, 4.6);
-  scene.add(lotus);
+  if (opts.lilyPads !== false) scene.add(lotus);
 
   // Stones along both bank edges.
   const stoneGeo = new DodecahedronGeometry(1, 1);
@@ -441,6 +450,15 @@ export function buildWorld(scene: Scene, grad: DataTexture, outlineMat: MeshBasi
       bridge.add(post);
       const base = new Mesh(baseGeo, capMat);
       base.position.set(x, top + 0.02, z);
+      if (!postLamps) {
+        // Plain post: a small cap only, no glass and no halo.
+        const knob = new Mesh(capGeo, capMat);
+        knob.scale.set(0.6, 0.6, 0.6);
+        knob.position.set(x, top + 0.1, z);
+        outline(knob, outlineMat, 1.12);
+        bridge.add(base, knob);
+        continue;
+      }
       const lamp = new Mesh(glassGeo, glass);
       lamp.position.set(x, top + 0.2, z);
       outline(lamp, outlineMat, 1.12);

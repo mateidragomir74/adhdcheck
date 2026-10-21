@@ -1,18 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { listChildren, listMissions, listSessionResults, type Child, type MissionRow, type SessionResult } from "@/lib/data/parent";
 import { S } from "../strings";
 import { BandHeadline } from "../_components/BandHeadline";
-import { Missions } from "../_components/Missions";
 import { ProgressChart } from "../_components/ProgressChart";
 import { ResultCard, formatDate } from "../_components/ResultCard";
 import { ErrorNote, Loading, Panel, Shell, useParent } from "../_components/shell";
 import { StartSession } from "../_components/StartSession";
 
-// One child: start a game (QR), the latest result card, progress, missions, earlier games, delete (FR-41).
+// One child: start a game (QR), the latest result card, progress, earlier games, delete (FR-41).
+// The Missions section (_components/Missions.tsx, lib/data, the API) is kept but not shown (Hatem, 2026-10-20).
 export function ChildView({ childId }: { childId: string }) {
   const { client, ready } = useParent();
   const router = useRouter();
@@ -20,7 +20,8 @@ export function ChildView({ childId }: { childId: string }) {
   const [results, setResults] = useState<SessionResult[]>([]);
   const [missions, setMissions] = useState<MissionRow[]>([]);
   const [state, setState] = useState<"loading" | "ready" | "missing" | "failed">("loading");
-  const [shown, setShown] = useState<string | null>(null);
+  // ?session=<id>: the report email links to the session that was paid for (the page is read inside Suspense).
+  const [shown, setShown] = useState<string | null>(useSearchParams().get("session"));
 
   useEffect(() => {
     if (!ready) return;
@@ -56,7 +57,14 @@ export function ChildView({ childId }: { childId: string }) {
     return (
       <Shell>
         <BackLink />
-        <ErrorNote />
+        {state === "missing" ? (
+          // The header of the Shell carries the Log out action.
+          <p role="alert" className="rounded-xl bg-berry-soft px-4 py-3 text-ink">
+            {S.child.notFound}
+          </p>
+        ) : (
+          <ErrorNote />
+        )}
       </Shell>
     );
 
@@ -89,9 +97,6 @@ export function ChildView({ childId }: { childId: string }) {
         </div>
 
         <aside className="space-y-6">
-          <Panel title={S.missions.title}>
-            <Missions client={client} childId={child.id} missions={missions} onChange={setMissions} />
-          </Panel>
           {scored.length > 1 && (
             <Panel title={S.child.history}>
               <ul className="-mx-2 max-h-96 overflow-y-auto">

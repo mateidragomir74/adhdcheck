@@ -14,8 +14,9 @@ port = 54322
 major_version = 17
 
 [db.seed]
-enabled = true
-sql_paths = ["./seed.sql"]
+# No seed.sql: the demo data are made by the seed_demo SQL function, through Reset demo on /parent
+# (FR-55, FR-56) or scripts/demo-rehearsal.mts.
+enabled = false
 
 [auth]
 site_url = "http://127.0.0.1:3000"

@@ -4,10 +4,18 @@ import Link from "next/link";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { useCallback, useEffect, useState } from "react";
 import { attempt } from "@/lib/attempt";
-import { createChild, getSubscriptionStatus, listChildren, listSessionResults, type Child } from "@/lib/data/parent";
+import {
+  birthYearRange,
+  createChild,
+  listChildren,
+  listSessionResults,
+  MAX_NICKNAME_LENGTH,
+  type Child,
+} from "@/lib/data/parent";
 import { BAND_TEXT, S } from "./strings";
 import { ErrorNote, Loading, Panel, Shell, buttonPrimary, buttonQuiet, field, postJson, useParent } from "./_components/shell";
 import { BandHeadline } from "./_components/BandHeadline";
+import { WeeklyEmail } from "./_components/WeeklyEmail";
 import { formatDate } from "./_components/ResultCard";
 
 type Row = Child & { last: { band: keyof typeof BAND_TEXT; at: string } | null };
@@ -23,13 +31,12 @@ async function fetchRows(client: SupabaseClient): Promise<Row[]> {
 }
 
 // The parent's home (FR-31): their children with the last result, add a child (nickname and birth year
-// only), the demo reset (FR-56) and the family plan (FR-45, FR-46).
+// only) and the demo reset (FR-56). The paid report is bought per session on the child page (D-05b).
 export function ParentHome() {
   const { client, ready } = useParent();
   const [rows, setRows] = useState<Row[] | null>(null);
   const [failed, setFailed] = useState(false);
   const [isDemo, setIsDemo] = useState(false);
-  const [plan, setPlan] = useState<string | null | undefined>(undefined);
 
   const load = useCallback(
     () =>
@@ -50,9 +57,6 @@ export function ParentHome() {
       .then((r) => r.json())
       .then((b: { is_demo?: boolean }) => setIsDemo(b.is_demo === true))
       .catch(() => {});
-    void getSubscriptionStatus(client)
-      .then(setPlan)
-      .catch(() => setPlan(null));
   }, [ready, client]);
 
   if (!ready) return <Shell><Loading /></Shell>;
@@ -108,8 +112,8 @@ export function ParentHome() {
               <DemoReset onDone={load} />
             </Panel>
           )}
-          <Panel title={S.billing.title}>
-            <Billing plan={plan} />
+          <Panel title={S.email.title}>
+            <WeeklyEmail />
           </Panel>
         </aside>
       </div>
@@ -120,7 +124,7 @@ export function ParentHome() {
 function AddChild({ onAdd }: { onAdd: (input: { nickname: string; birth_year: number }) => Promise<void> }) {
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
-  const year = new Date().getFullYear();
+  const years = birthYearRange();
   return (
     <form
       className="grid gap-3 sm:grid-cols-[1fr_9rem_auto] sm:items-end"
@@ -136,11 +140,11 @@ function AddChild({ onAdd }: { onAdd: (input: { nickname: string; birth_year: nu
     >
       <label className="block">
         <span className="mb-1 block text-sm font-semibold">{S.home.nickname}</span>
-        <input name="nickname" required maxLength={40} autoComplete="off" className={field} />
+        <input name="nickname" required maxLength={MAX_NICKNAME_LENGTH} autoComplete="off" className={field} />
       </label>
       <label className="block">
         <span className="mb-1 block text-sm font-semibold">{S.home.birthYear}</span>
-        <input name="birth_year" type="number" required min={year - 12} max={year - 6} defaultValue={year - 8} className={field} />
+        <input name="birth_year" type="number" required min={years.min} max={years.max} defaultValue={years.max - 2} className={field} />
       </label>
       <button type="submit" disabled={busy} className={buttonPrimary}>
         {S.home.add}
@@ -174,31 +178,6 @@ function DemoReset({ onDone }: { onDone: () => Promise<void> }) {
       </button>
       {state === "done" && <p role="status" className="text-sm text-ink-muted">{S.demo.done}</p>}
       {state === "failed" && <ErrorNote />}
-    </div>
-  );
-}
-
-function Billing({ plan }: { plan: string | null | undefined }) {
-  const [note, setNote] = useState<string | null>(null);
-  const active = plan === "active" || plan === "trialing";
-  async function go(path: string) {
-    const res = await postJson(path).catch(() => null);
-    const body = (await res?.json().catch(() => ({}))) as { url?: string } | undefined;
-    if (res?.ok && body?.url) window.location.assign(body.url);
-    else setNote(S.billing.unavailable);
-  }
-  if (plan === undefined) return <Loading />;
-  return (
-    <div className="space-y-3">
-      <p className="text-ink-muted">{active ? S.billing.active : S.billing.inactive}</p>
-      <button
-        type="button"
-        className={active ? buttonQuiet : buttonPrimary}
-        onClick={() => go(active ? "/api/stripe/portal" : "/api/stripe/checkout")}
-      >
-        {active ? S.billing.manage : S.billing.subscribe}
-      </button>
-      {note && <p role="status" className="text-sm text-ink-muted">{note}</p>}
     </div>
   );
 }

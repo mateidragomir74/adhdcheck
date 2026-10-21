@@ -4,11 +4,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { createLazyClient } from "@/lib/supabase/client";
+// Relative import: the tests render a card that uses this file, and Vitest has no "@/" alias.
+import { createLazyClient } from "../../../lib/supabase/client";
+import { loginPathFor } from "../../../lib/safe-next";
 import { S } from "../strings";
 
 // Parent pages run in the browser with the parent's own Supabase client (RLS returns only their rows).
-// No session: back to /login.
+// No session: to /login, carrying this page, so the login returns here (a link in the report email lands on the
+// right child and report after login).
 export function useParent(): { client: SupabaseClient; ready: boolean } {
   const client = useMemo(() => createLazyClient(), []);
   const router = useRouter();
@@ -18,7 +21,7 @@ export function useParent(): { client: SupabaseClient; ready: boolean } {
     void client.auth.getUser().then(({ data }) => {
       if (!live) return;
       if (data.user) setReady(true);
-      else router.replace("/login");
+      else router.replace(loginPathFor(window.location.pathname + window.location.search));
     });
     return () => {
       live = false;

@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { hashPlayCode, isPlayCode, newPlayCode, PLAY_LINK_LIFETIME_MS } from "../../../lib/play-link";
+import { PROCESSING_CONSENT_VERSION } from "../../../lib/processing-consent";
 import { handleCreatePlayLink, handleResolvePlayLink, type PlayLinkStore } from "./handlers";
 
 const PARENT = "00000000-0000-4000-8000-00000000000a";
@@ -8,10 +9,11 @@ const NOW = new Date("2026-10-20T10:00:00Z");
 
 const OFF = { camera: false, microphone: false };
 
-function fakeStore({ issued = true, childId = CHILD as string | null, consent = OFF } = {}) {
+function fakeStore({ issued = true, childId = CHILD as string | null, consent = OFF, agreed = true } = {}) {
   const issue = vi.fn().mockResolvedValue(issued);
   const resolve = vi.fn().mockResolvedValue(childId ? { childId, consent } : null);
-  return { store: { issue, resolve } satisfies PlayLinkStore, issue, resolve };
+  const hasProcessingConsent = vi.fn().mockResolvedValue(agreed);
+  return { store: { issue, resolve, hasProcessingConsent } satisfies PlayLinkStore, issue, resolve, hasProcessingConsent };
 }
 
 function create(body: unknown, store: PlayLinkStore, { parentId = PARENT as string | null, contentType = "application/json" } = {}) {
@@ -58,6 +60,26 @@ describe("POST /api/play-links (FR-01, FR-32)", () => {
 
     expect(res.status).toBe(401);
     expect(await res.json()).toEqual({ error: "not_logged_in" });
+    expect(issue).not.toHaveBeenCalled();
+  });
+
+  it("NFR-04: answers 403 and issues nothing before the parent has consented to the current text", async () => {
+    const { store, issue, hasProcessingConsent } = fakeStore({ agreed: false });
+    const res = await create({ child_id: CHILD }, store);
+
+    expect(res.status).toBe(403);
+    expect(await res.json()).toEqual({ error: "consent_required" });
+    expect(hasProcessingConsent).toHaveBeenCalledWith(PARENT, PROCESSING_CONSENT_VERSION);
+    expect(issue).not.toHaveBeenCalled();
+  });
+
+  it("NFR-04: answers 503 and issues nothing when the consent cannot be checked", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const { store, issue, hasProcessingConsent } = fakeStore();
+    hasProcessingConsent.mockRejectedValue(new Error("connection refused"));
+    const res = await create({ child_id: CHILD }, store);
+
+    expect(res.status).toBe(503);
     expect(issue).not.toHaveBeenCalled();
   });
 
@@ -127,5 +149,19 @@ describe("GET /api/play-links/[code] (FR-01)", () => {
     const { store } = fakeStore();
     const res = await handleResolvePlayLink(newPlayCode().code, { store });
     expect(res.headers.get("cache-control")).toBe("no-store");
+  });
+
+  it("answers 500, not a storage error, when the stored link breaks the contract", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const store: PlayLinkStore = {
+      issue: vi.fn(),
+      resolve: vi.fn().mockResolvedValue({ childId: "", consent: OFF }),
+      hasProcessingConsent: vi.fn(),
+    };
+    const res = await handleResolvePlayLink(newPlayCode().code, { store });
+
+    expect(res.status).toBe(500);
+    expect(await res.json()).toEqual({ error: "invalid_answer" });
+    expect(JSON.stringify(error.mock.calls)).toContain("invalid_answer");
   });
 });

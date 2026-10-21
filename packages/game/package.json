@@ -12,10 +12,13 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@adhdcheck/contracts": "*",
+    "@adhdcheck/sensors": "*",
     "phaser": "^4.2.1",
     "three": "^0.186.1"
   },
   "devDependencies": {
+    "@adhdcheck/scoring": "*",
     "@types/three": "^0.186.0"
   }
 }

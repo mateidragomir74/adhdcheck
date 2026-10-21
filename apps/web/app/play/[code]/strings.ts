@@ -15,3 +15,16 @@ export const PLAY_STRINGS = {
   offline: "Waiting for the internet. Keep the tablet open.",
   done: "All done, thank you! You can give the tablet back.",
 } as const;
+
+// TODO (Person 4, texts owner): placeholder wording for the card between two mini-games. No source text exists.
+// {n} is the number of the game about to start, {total} how many games the session has. One idea, nothing about
+// results or how the child did (FR-15). Only "en" is shown today; "ro" is ready for when the play page is translated.
+export const TRANSITION_STRINGS = {
+  en: { title: "Game {n} of {total}", hint: "Get ready!" },
+  ro: { title: "Jocul {n} din {total}", hint: "Pregătește-te!" },
+} as const;
+
+export function transitionText(lang: keyof typeof TRANSITION_STRINGS, n: number, total: number) {
+  const t = TRANSITION_STRINGS[lang];
+  return { title: t.title.replace("{n}", String(n)).replace("{total}", String(total)), hint: t.hint };
+}

@@ -26,7 +26,20 @@ export class GameAudio {
   private river: AudioBufferSourceNode | null = null;
   private closed = false;
 
-  constructor(private readonly assetBase: string) {}
+  /** audioContext: one the caller created and resumed inside a user gesture; it is used instead of making a new one. */
+  constructor(
+    private readonly assetBase: string,
+    audioContext?: AudioContext,
+  ) {
+    if (audioContext) this.adopt(audioContext);
+  }
+
+  private adopt(ctx: AudioContext): void {
+    this.ctx = ctx;
+    this.master = ctx.createGain();
+    this.master.gain.value = 0.9;
+    this.master.connect(ctx.destination);
+  }
 
   /** Fetch the sample files early (no gesture needed). Decoding waits for unlock(). */
   prefetch(): void {
@@ -49,13 +62,11 @@ export class GameAudio {
         const Ctor =
           window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
         if (!Ctor) return;
-        this.ctx = new Ctor();
-        this.master = this.ctx.createGain();
-        this.master.gain.value = 0.9;
-        this.master.connect(this.ctx.destination);
-        this.decodePending();
+        this.adopt(new Ctor());
       }
-      const ready = this.ctx.state === "suspended" ? this.ctx.resume() : Promise.resolve();
+      const ctx = this.ctx as AudioContext;
+      this.decodePending();
+      const ready = ctx.state === "suspended" ? ctx.resume() : Promise.resolve();
       void ready.then(() => this.startRiver()).catch(() => undefined);
     } catch {
       this.ctx = null; // audio unavailable: the game still works with the visual cue

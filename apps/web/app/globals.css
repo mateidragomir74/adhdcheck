@@ -19,6 +19,16 @@
   --leaf-soft: #d1fae5;
   --berry: #e11d48;
   --berry-soft: #ffe4e6;
+  /* Landing only: the colours of the 3D game (packages/game/src/minigames). */
+  --dusk-deep: #120d2e;
+  --dusk: #1d1640;
+  --dusk-2: #2a1f5c;
+  --river: #2fbfae;
+  --river-soft: #7ff0e1;
+  --lantern: #ffc457;
+  --on-lantern: #2a1a00;
+  --lavender: #d9cff5;
+  --lavender-muted: #c3b8ea;
 }
 
 @theme inline {
@@ -38,6 +48,15 @@
   --color-leaf-soft: var(--leaf-soft);
   --color-berry: var(--berry);
   --color-berry-soft: var(--berry-soft);
+  --color-dusk-deep: var(--dusk-deep);
+  --color-dusk: var(--dusk);
+  --color-dusk-2: var(--dusk-2);
+  --color-river: var(--river);
+  --color-river-soft: var(--river-soft);
+  --color-lantern: var(--lantern);
+  --color-on-lantern: var(--on-lantern);
+  --color-lavender: var(--lavender);
+  --color-lavender-muted: var(--lavender-muted);
   --font-display: var(--font-fredoka);
   --font-sans: var(--font-nunito);
 }
@@ -99,6 +118,34 @@ h3 {
 }
 .btn-glow:active {
   transform: scale(0.97);
+}
+
+/* Landing: lantern-gold call to action, and quiet dusk surfaces. */
+.btn-lantern {
+  background: var(--lantern);
+  color: var(--on-lantern);
+  box-shadow:
+    0 10px 30px -10px rgb(255 196 87 / 0.75),
+    inset 0 -4px 0 0 rgb(0 0 0 / 0.14);
+  transition:
+    transform 200ms ease-out,
+    background-color 200ms ease-out,
+    box-shadow 200ms ease-out;
+}
+.btn-lantern:hover {
+  background: #ffd47f;
+  box-shadow:
+    0 0 0 6px rgb(255 196 87 / 0.2),
+    0 14px 34px -10px rgb(255 196 87 / 0.85),
+    inset 0 -4px 0 0 rgb(0 0 0 / 0.14);
+}
+.btn-lantern:active {
+  transform: scale(0.97);
+}
+.dusk-surface {
+  background: rgb(255 255 255 / 0.05);
+  border: 1px solid rgb(217 207 245 / 0.14);
+  border-radius: 1.5rem;
 }
 }
 

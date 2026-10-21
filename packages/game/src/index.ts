@@ -1,25 +1,11 @@
-// Placeholder game (Person 1 builds the real one). Browser only: Phaser touches `window` when it
-// loads, so it is imported inside mountGame and never at module load. Call this from a client
-// component that is itself loaded with next/dynamic and ssr: false.
-export type GameHandle = { destroy: () => void };
+import Phaser from "phaser";
+import { LumaScene } from "./scenes/LumaScene";
 
-export async function mountGame(parent: HTMLElement): Promise<GameHandle> {
-  const mod = await import("phaser");
-  const Phaser = (mod as unknown as { default?: typeof mod }).default ?? mod;
+export interface GameHandle {
+  destroy: () => void;
+}
 
-  class LumaScene extends Phaser.Scene {
-    constructor() {
-      super("luma");
-    }
-    create() {
-      const { width, height } = this.scale;
-      this.cameras.main.setBackgroundColor("#0b1430");
-      this.add
-        .text(width / 2, height / 2, "Luma", { fontFamily: "sans-serif", fontSize: "48px", color: "#ffffff" })
-        .setOrigin(0.5);
-    }
-  }
-
+export function mountGame(parent: HTMLElement): GameHandle {
   const game = new Phaser.Game({
     type: Phaser.AUTO,
     parent,
@@ -36,4 +22,6 @@ export * from "./minigames/bridge-wait";
 export * from "./minigames/treasure-choice";
 export * from "./minigames/star-path";
 export * from "./minigames/route-planner";
+export * from "./minigames/wake-fireflies";
+export * from "./minigames/lantern-watch";
 export * from "./minigames/storm-watch";

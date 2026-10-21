@@ -1,7 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { PlayLinkStore } from "./handlers";
 
-// PlayLinkStore backed by the issue_play_link and resolve_play_link SQL functions (supabase/migrations).
+// PlayLinkStore backed by the issue_play_link and resolve_play_link SQL functions and the
+// processing_consents table (supabase/migrations).
 // Pass the service-role client (lib/supabase/admin.ts): play_links is closed to parents and to anon.
 export function createSupabasePlayLinkStore(client: SupabaseClient): PlayLinkStore {
   return {
@@ -25,6 +26,16 @@ export function createSupabasePlayLinkStore(client: SupabaseClient): PlayLinkSto
         | null
         | undefined;
       return row ? { childId: row.child_id, consent: { camera: row.allow_camera === true, microphone: row.allow_microphone === true } } : null;
+    },
+    async hasProcessingConsent(parentId, version) {
+      const { data, error } = await client
+        .from("processing_consents")
+        .select("id")
+        .eq("parent_id", parentId)
+        .eq("version", version)
+        .limit(1);
+      if (error) throw new Error(`processing_consents read failed: ${error.message}`);
+      return (data ?? []).length > 0;
     },
   };
 }

@@ -26,25 +26,41 @@ export type FlowDeps = {
   show(screen: Screen): void;
 };
 
-export async function runPlayFlow(code: string, deps: FlowDeps): Promise<void> {
+// signal: aborted when the page is left. The flow then stops at its next step, shows nothing and uploads nothing.
+export async function runPlayFlow(code: string, deps: FlowDeps, signal?: AbortSignal): Promise<void> {
+  const gone = () => signal?.aborted === true;
   deps.show({ kind: "checking" });
   const link = await deps.resolve(code).catch(() => null);
+  if (gone()) return;
   if (!link) return deps.show({ kind: "invalid" });
   if (!deps.play) return deps.show({ kind: "unavailable" });
 
   deps.show({ kind: "ready", consent: link.consent });
   await deps.waitForStart();
+  if (gone()) return;
+  // The start screen can wait a long time and the link has a lifetime, so it is checked again at the tap: an
+  // expired link gets the neutral "ask your parent" screen instead of a game whose result could not be saved (M2).
+  // No answer at all (the network is down) does not block the child: the first answer stands.
+  const again = await deps.resolve(code).then(
+    (l) => l,
+    () => undefined,
+  );
+  if (gone()) return;
+  if (again === null) return deps.show({ kind: "invalid" });
   deps.show({ kind: "playing" });
   const metrics = await deps.play(link.child_id, link.consent);
+  if (gone()) return;
 
   deps.show({ kind: "saving" });
   for (;;) {
     const result = await deps.upload(code, metrics);
+    if (gone()) return;
     // A refused upload (link expired during the game) still ends calmly for the child; the parent
     // starts a new session from their screen.
     if (result.status !== "failed") return deps.show({ kind: "done" });
     deps.show({ kind: "offline" });
     await deps.waitForNetwork();
+    if (gone()) return;
     deps.show({ kind: "saving" });
   }
 }

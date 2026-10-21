@@ -1,10 +1,12 @@
 import { SCORE_DISCLAIMER } from "@adhdcheck/contracts";
 import type { SessionResult } from "@/lib/data/parent";
 import { BAND_TEXT, S } from "../strings";
+import { ReportDownload } from "./ReportDownload";
 
 // FR-33 result card: band in plain words, indicator bars, reasons, data quality, disclaimer (fixed text, shown under the headline), next step.
 // Both outcomes get the same colours and weight (adhdcheck-dev skill, section 4): no alarm, no relief.
-// The next step is shown for every band and is never behind the paywall (FR-35, FR-48).
+// The whole card and the next step are free for every parent (FR-35, FR-48, D-05). Only the report
+// download below the card is paid, and its paywall appears only after the server refuses the download.
 
 const RATE_KEYS = ["omission_rate", "commission_rate", "off_target_tap_rate"] as const;
 
@@ -14,9 +16,9 @@ export function isParentNote(note: string) {
   return !/^stub:/i.test(note.trim());
 }
 
-export function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "long", year: "numeric" });
-}
+// Relative import: the tests render this card, and Vitest has no "@/" alias.
+import { formatDate } from "../../../lib/format";
+export { formatDate };
 
 function Bar({ label, value, shown }: { label: string; value: number; shown: string }) {
   const width = `${Math.round(Math.min(Math.max(value, 0), 1) * 100)}%`;
@@ -87,6 +89,9 @@ export function ResultCard({ result }: { result: SessionResult }) {
           <h4 className="font-display text-lg font-semibold">{S.result.nextStep}</h4>
           <p className="mt-1">{S.result.nextStepText}</p>
         </div>
+      </div>
+      <div className="border-t border-ink/10 px-5 py-4 sm:px-7">
+        <ReportDownload sessionId={result.session_id} band={score.band} />
       </div>
     </article>
   );

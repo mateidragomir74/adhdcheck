@@ -1,8 +1,9 @@
-// Start a Stripe Checkout subscription (FR-45). Logic and tests in ../handlers.ts.
+// Start a Stripe Checkout one-off payment for one report (FR-45, D-05b). Logic and tests in ../handlers.ts.
+import { getLatestClosedCheckoutId, getReportPurchase, getSessionResult, listPendingCheckoutIds } from "@/lib/data/parent";
 import { createStripeClient } from "@/lib/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { getOrCreateCustomer, getSubscriptionStatus } from "../billing";
+import { startPurchase } from "../billing";
 import { handleCheckout } from "../handlers";
 
 export async function POST(request: Request) {
@@ -18,16 +19,38 @@ export async function POST(request: Request) {
   return handleCheckout(request, {
     getParentId: async () => (await supabase.auth.getClaims()).data?.claims.sub ?? null,
     priceId: process.env.STRIPE_PRICE_ID,
-    getSubscriptionStatus: (parentId) => getSubscriptionStatus(admin, parentId),
-    getOrCreateCustomer: (parentId) => getOrCreateCustomer(admin, stripe, parentId),
-    createCheckoutSession: ({ customer, priceId, parentId, successUrl, cancelUrl }) =>
-      stripe.checkout.sessions.create({
-        mode: "subscription",
-        customer,
-        line_items: [{ price: priceId, quantity: 1 }],
-        client_reference_id: parentId,
-        success_url: successUrl,
-        cancel_url: cancelUrl,
-      }),
+    siteUrl: process.env.SITE_URL,
+    // The parent's own client: RLS returns nothing for another parent's session or purchase.
+    getOwnSession: async (sessionId) => {
+      const result = await getSessionResult(supabase, sessionId);
+      return result ? { childId: result.child_id, band: result.score?.band ?? null } : null;
+    },
+    isPaid: async (sessionId) => (await getReportPurchase(supabase, sessionId))?.status === "paid",
+    pendingCheckouts: (sessionId) => listPendingCheckoutIds(supabase, sessionId),
+    latestClosedCheckout: (sessionId) => getLatestClosedCheckoutId(supabase, sessionId),
+    retrieveCheckout: async (checkoutId) => {
+      try {
+        const c = await stripe.checkout.sessions.retrieve(checkoutId);
+        const status: "open" | "complete" | "expired" = c.status === "open" ? "open" : c.status === "complete" ? "complete" : "expired";
+        return { status, paymentStatus: c.payment_status, url: c.url };
+      } catch (e) {
+        if ((e as { code?: string }).code === "resource_missing") return null;
+        throw e;
+      }
+    },
+    createCheckoutSession: ({ priceId, parentId, sessionId, lang, successUrl, cancelUrl, idempotencyKey }) =>
+      stripe.checkout.sessions.create(
+        {
+          mode: "payment",
+          line_items: [{ price: priceId, quantity: 1 }],
+          client_reference_id: parentId,
+          metadata: { parent_id: parentId, session_id: sessionId, lang },
+          payment_intent_data: { metadata: { parent_id: parentId, session_id: sessionId } },
+          success_url: successUrl,
+          cancel_url: cancelUrl,
+        },
+        { idempotencyKey },
+      ),
+    startPurchase: (input) => startPurchase(admin, input),
   });
 }

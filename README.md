@@ -3,7 +3,7 @@
 ADHD Check is a hackathon project (team of 4 to 5, starting 2026-10-19) with two parts:
 
 - **Child app**: a short serious game for children aged 6 to 12, played in the browser on a tablet or phone (possibly as a PWA). Gameplay measures (reaction-time variability, omissions, commissions, off-target taps) are scored on the server with transparent, illustrative rules.
-- **Parent web app**: account, child profile, a result card that says whether a professional assessment is recommended, the next step to the right professional, parent-chosen missions tracked over time, and a subscription (Stripe test mode).
+- **Parent web app**: account, child profile, a result card that says whether a professional assessment is recommended, the next step to the right professional, parent-chosen missions tracked over time, and a detailed PDF report bought once per session (9.99 EUR, Stripe test mode) and an email with a link to it behind login (the PDF is not attached).
 
 It is an orientation tool, not a diagnosis: it never shows an ADHD probability or severity, and it has not been clinically validated. See the intended purpose in `docs/02-specification-cahier-des-charges.md`, section 2.
 

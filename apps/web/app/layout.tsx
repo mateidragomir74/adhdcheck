@@ -14,13 +14,13 @@ const nunito = Nunito({
 });
 
 export const metadata: Metadata = {
-  title: "ADHDCheck · Nu mai ghici dacă e „doar o fază”",
+  title: "ADHDCheck · Dă-i telefonul. Primești un pas următor clar.",
   description:
-    "Un joc de 14 minute cu licurici care îți arată dacă merită o evaluare de specialitate pentru copilul tău (6–12 ani). Nu este un diagnostic.",
+    "Un joc liniștit de 10–15 minute cu Luma, pentru copii de 6–12 ani. La final afli dacă merită să vorbești cu un specialist despre atenția și concentrarea copilului. Nu este un diagnostic.",
   openGraph: {
     title: "ADHDCheck",
     description:
-      "Un joc de 14 minute care te ajută să decizi dacă merită o evaluare de specialitate. Pentru părinții copiilor de 6–12 ani.",
+      "Un joc de 10–15 minute care te ajută să decizi dacă merită să vorbești cu un specialist. Pentru părinții copiilor de 6–12 ani. Pilot, fără marcaj CE.",
     type: "website",
   },
 };
@@ -31,7 +31,9 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="ro" className={`${fredoka.variable} ${nunito.variable} antialiased`}>
+    // suppressHydrationWarning applies to this element's own attributes only ("only works one level deep",
+    // react.dev hydrateRoot): browser extensions add attributes to <html> before React hydrates.
+    <html lang="ro" className={`${fredoka.variable} ${nunito.variable} antialiased`} suppressHydrationWarning>
       <body className="min-h-dvh">{children}</body>
     </html>
   );

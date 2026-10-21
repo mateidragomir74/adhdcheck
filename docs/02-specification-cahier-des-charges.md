@@ -72,7 +72,7 @@ Demo position (PROPOSAL, from 03 section 8): present the build as a prototype, "
 
 - Child app: one go/no-go style game with practice and calibration, a 60 to 90 s demo round (03 section 9), metric capture, upload, offline retry.
 - Scoring: transparent rules in `packages/scoring`, illustrative thresholds with `validated: false` (03 section 4).
-- Parent web app: sign up and log in, child profile, session launch by QR or link, result card, next-step guidance, recommendations, missions list and simple progress chart, Stripe test-mode subscription, one email type.
+- Parent web app: sign up and log in, child profile, session launch by QR or link, result card, next-step guidance, recommendations, missions list and simple progress chart, Stripe test-mode one-off report purchase (D-05b), an email with a link to the paid report behind login (R3-D1).
 - Demo: seeded parent with 4 weeks of sessions, reset button (03 section 9).
 
 ### 3.2 After the hackathon (not built now)
@@ -122,7 +122,7 @@ Each FR has an acceptance criterion (AC) that a teammate can test.
 
 ### 4.1b Further mini-games (from 04 section 5, PROPOSAL)
 
-04 section 5 designs a core of mini-games 0 to 5 in about 13.4 minutes of play, with Route Planner optional outside that core. Durations, trial counts and timings are design choices of 04, not sourced values. Their data need the proposed `minigames` field (PC-02 in section 10.3); until the interface owner accepts it, these mini-games cannot be uploaded in the v1 contract, so their hackathon priority is low.
+04 section 5 designs a core of mini-games 0 to 5 in about 13.4 minutes of play, with Route Planner optional outside that core. Durations, trial counts and timings are design choices of 04, not sourced values. Their data need the proposed `minigames` field (PC-02 in section 10.3); PC-02 was accepted on 2026-10-20 (section 10.3): one `/play/<code>` session now plays Lantern Watch (with its calibration), Star Path, Bridge Wait, Treasure Choice and Route Planner in a row and uploads once at the end, with the four results in `minigames`. Storm Watch (FR-60) is not built and is not in the chain. A mini-game that fails to start is skipped and recorded as `results: { status: "skipped", reason }` (version "none"): an implementation choice, not in the PC-02 text.
 
 | ID | Requirement | Priority | Acceptance criterion | Traces to |
 |---|---|---|---|---|
@@ -177,20 +177,21 @@ Open points from 06, not verified: the licence of the `face_landmarker.task` mod
 | FR-43 | Parent questionnaire (PROPOSAL, D-13): NICHQ Vanderbilt Assessment Scale, Parent, 1st edition (2002), all 18 symptom items and 8 performance items as printed, with the NICHQ credit line, completed by the parent after the session (04 section 3). Hackathon: free download with credit; any paid product: written permission from NICHQ/AAP, TODO (04 section 1.2). How questionnaire and game combine into the two outcomes is open (D-16). | Should | Items and anchors match the printed form exactly (side-by-side check by R5); the credit line is visible; no paid flow shows the questionnaire until permission is recorded. | UN-35 |
 | FR-42 | Landing page with QR for the demo (03 section 9). | Should | The landing page loads on the production alias and its QR opens the app. | Enabler |
 
-### 4.4 Subscription (Stripe test mode)
+### 4.4 Report purchase (Stripe test mode, one-off payment per report)
 
 | ID | Requirement | Priority | Acceptance criterion | Traces to |
 |---|---|---|---|---|
-| FR-45 | Subscribe with Stripe Checkout, `mode: "subscription"`, test mode; success returns to `/dashboard?paid=1` (03 section 6). Product name and price: TODO (decision D-05). | Should | A test checkout completes and returns to the dashboard. | UN-23 |
-| FR-46 | Manage or cancel through the Stripe Customer Portal (`POST /api/stripe/portal`) (03 section 6). | Should | From the dashboard, the parent reaches the portal and cancels; status updates. | UN-23 |
-| FR-47 | Webhook writes `subscriptions.status` on `customer.subscription.updated` and `customer.subscription.deleted` (and the checkout completion event, name unverified in 03); signature verified. | Should | A replayed event with a bad signature is rejected; a valid one updates the row. | UN-23 |
-| FR-48 | Gating (PROPOSAL): the result card, the next step (FR-33 to FR-35) and data deletion are never behind the paywall. The subscription unlocks missions and progress tracking. Final split: decision D-05. | Must | With no subscription, a parent sees the full result card and next-step page. | UN-19 |
+| FR-45 | Buy one report with Stripe Checkout, `mode: "payment"`, test mode (D-05b, DECIDED, Hatem, 2026-10-20: 9.99 EUR, one-off per report, not a subscription). `POST /api/stripe/checkout` takes `{ sessionId }`, only for the logged-in parent's own scored session, puts `parent_id`, `session_id` and the email language in the Checkout Session metadata, takes the price from `STRIPE_PRICE_ID`, and refuses (409) a report that is already paid, one whose Checkout is complete or awaiting a delayed payment, and a session with too little data (`insufficient_data`: no result to report); an earlier open Checkout of the same report is returned instead of a second one. Return URLs are built from `SITE_URL`. Success returns to the child page (`/parent/<childId>?report=paid`). | Should | A test checkout completes and returns to the child page; another parent's session answers 404; a paid report answers 409 (`apps/web/app/api/stripe/handlers.test.ts`). | UN-23 |
+| FR-46 | Retired with D-05b: a one-off payment has nothing to manage or cancel, so the Stripe Customer Portal route is removed. | n/a | n/a | UN-23 |
+| FR-47 | Webhook `POST /api/stripe/webhook`: the signature is verified on the raw body (400 otherwise); `checkout.session.completed` (only when `payment_status` is `paid` and the one line item is the configured price; `checkout.session.async_payment_failed` and `checkout.session.expired` mark the purchase failed or expired so a new checkout is allowed) and `checkout.session.async_payment_succeeded` mark the purchase paid once in `report_purchases`, then an email with a link to the report behind login (FR-51) is sent with Resend to the address of the parent who paid (from Supabase auth, never from client input), and `emailed_at` is set. A replayed event sends no second email. A `checkout.session.completed` that is still `unpaid` (delayed payment method) records the pending purchase from the metadata, so a second payment cannot be started while the bank is working (R5-4). Without `RESEND_API_KEY` or a sender (`EMAIL_FROM`) the purchase is still recorded and a code is logged, never the address. | Should | A wrong or missing signature answers 400; a valid event marks paid and sends one email; a replay sends none (`apps/web/app/api/stripe/handlers.test.ts`, `supabase/tests/database/report_purchases.test.sql`). | UN-23 |
+| FR-48 | Gating (DECIDED, Hatem, 2026-10-20, D-05): everything is free for parents (games, result card, next step FR-33 to FR-35, missions, progress, data deletion) except downloading the parent report (`GET /api/reports/<sessionId>`, PDF). The report holds only what the result card shows: nickname, session date, the fixed headline and its supporting line, the fixed disclaimer, the game measures as game measures, the next step; no probability, severity or diagnosis wording. The download needs a paid purchase of that report by that parent (`report_purchases`, D-05b), checked on the server; the offer appears only in the report block under the result card. | Must | With no paid purchase, a parent sees the full result card and next step, and the download answers 402; with a paid purchase of that report it answers a PDF; another parent's session answers 404 even when its report is paid (`apps/web/app/api/reports/handlers.test.ts`, `apps/web/lib/report.test.ts`, `apps/web/app/parent/gating.test.ts`, `supabase/tests/database/report_access.test.sql`). | UN-19 |
 
 ### 4.5 Email notification
 
 | ID | Requirement | Priority | Acceptance criterion | Traces to |
 |---|---|---|---|---|
-| FR-50 | Emails through Resend ("weekly summary" and "new mission"), carrying no scores, bands or indicators, only a link to the dashboard (03 section 7). | Should | A test email arrives; its body contains no band, indicator or flag text. | UN-24 |
+| FR-50 | Emails through Resend ("weekly summary", "new mission" and, since R3-D1, the paid report email of FR-51), carrying no scores, bands, indicators or other child data, only a link to the app (03 section 7). | Should | A test email arrives; its body contains no band, indicator or flag text. | UN-24 |
+| FR-51 | Paid report email (D-05b and R3-D1 / D-05c, DECIDED, Hatem, 2026-10-20: the email carries a link behind login, no attachment, no child data): sent once, only to the parent who paid, in the parent's language when known (RO or EN, from the browser at checkout); fixed text and one link to the child page (`SITE_URL/parent/<childId>?session=<sessionId>`), which asks for a login and returns to the same page after it; no nickname, headline, band, score, disclaimer or PDF in the subject or the body; no diagnosis, probability, severity or treatment wording. The PDF stays downloadable in the app for the parent who paid. Sender: `EMAIL_FROM` (the one sender setting of every email), on a domain verified in Resend (`onboarding@resend.dev` only delivers to the Resend account owner). Wording: placeholder until Person 4 approves. | Should | `apps/web/lib/email/messages.test.ts` (no child data in any email), `apps/web/lib/safe-next.test.ts` (login returns to the linked page); webhook tests above. | UN-19, UN-24 |
 
 ### 4.6 Admin and demo seeding
 
@@ -221,7 +222,7 @@ Open points from 06, not verified: the licence of the `face_landmarker.task` mod
 | NFR-11 | RLS enabled on every table, one policy per operation using `(select auth.uid())`, `to authenticated`; policy columns indexed; never `user_metadata` for authorisation (03 section 5). | Must | pgTAP test: parent B reads zero rows of parent A (03 section 5). | UN-33 |
 | NFR-12 | `service_role` key used server-side only (03 section 13). | Must | Code search finds it only in server code. | UN-33 |
 | NFR-13 | Rate limit on `POST /api/sessions` (03 section 12). Limit value: TODO. | Should | Burst test receives a 429 above the limit. | UN-33 |
-| NFR-14 | Stripe webhook signature verified (03 section 6). | Must | See FR-47. | UN-33 |
+| NFR-14 | Stripe webhook signature verified on the raw body (03 section 6; https://docs.stripe.com/webhooks). | Must | See FR-47. | UN-33 |
 
 ### 5.3 Timing measurement (from 03 section 2)
 
@@ -286,7 +287,7 @@ Open points from 06, not verified: the licence of the `face_landmarker.task` mod
 | Backend, auth, DB | Supabase (Postgres + Auth + RLS), EU region | Firebase (Firestore, EU location) | Postgres RLS maps cleanly to "parent sees only own children". Free plan: 2 active projects, 500 MB, 50,000 MAU, pauses after 1 week of inactivity. Supabase MCP is available to us. Firebase has EU locations (eur3, europe-west1/4) but location is immutable; Firebase pricing and rules model not fetched (unverified) | https://supabase.com/pricing , https://supabase.com/docs/guides/database/postgres/row-level-security , https://firebase.google.com/docs/firestore/locations |
 | EU hosting | Create the project in a specific EU region (Frankfurt), not the general "Europe" region | none | General Europe region can land in London or Zurich, which are not EU; region cannot be changed after creation; docs state region selection is "not proof of regulatory compliance" | https://supabase.com/docs/guides/platform/regions |
 | Scoring runtime | Pure TypeScript package `packages/scoring`, called from a Next.js route handler (server recomputes from raw trials) | Python FastAPI service; Supabase Edge Function | One language, unit-testable, no extra deploy. Supabase Edge Functions are TypeScript on Deno and the page does not mention Python, so a Python scorer would need its own host | https://supabase.com/docs/guides/functions |
-| Payments | Stripe test mode: Checkout (mode subscription) + Customer Portal | Payment Links | Portal is created by POST to `/v1/billing_portal/sessions` with customer and `return_url`; configure portal in the test Dashboard; listen to `customer.subscription.updated` and `customer.subscription.deleted` to grant or revoke access | https://docs.stripe.com/customer-management/integrate-customer-portal , https://docs.stripe.com/payments/checkout/build-subscriptions |
+| Payments | Stripe test mode: Checkout, `mode: "payment"`, one-off per report (D-05b) | Payment Links | Listen to `checkout.session.completed` and `checkout.session.async_payment_succeeded`, fulfil only when `payment_status` is not `unpaid`, and make fulfilment safe to run several times for one Checkout Session | https://docs.stripe.com/checkout/fulfillment , https://docs.stripe.com/webhooks |
 | Email to parents | Resend (free: 3,000 emails/month, 100/day, 3 domains) for weekly summaries and mission reminders; Supabase Auth emails for login only | Push notifications | Email needs no device permission and works in a demo. Resend Pro is 20 USD/month for 50,000 emails. Supabase built-in SMTP sending limits: unverified. Web push on iOS: unverified, skip | https://resend.com/pricing |
 | Hosting | Vercel | Netlify (not researched, unverified) | Vercel MCP available. WARNING: Hobby plan is restricted to non-commercial, personal use; Pro developer seat is 20 USD/user/month. Hobby preview deployments are behind Vercel Authentication by default, which would block a phone scanning a QR code, so demo from the production alias | https://vercel.com/docs/plans/hobby |
 | QR code | `qrcode` npm package (MIT), `toCanvas` in browser | any | Renders to canvas in the browser | https://github.com/soldair/node-qrcode |
@@ -306,7 +307,7 @@ adhdcheck/
       app/play/[token]/        # mounts the Phaser game
       app/dashboard/           # parent: children, results, missions, billing
       app/api/sessions/        # POST session metrics -> validate -> score -> save
-      app/api/stripe/          # checkout, portal, webhook
+      app/api/stripe/          # checkout, webhook
   packages/
     game/                      # Phaser scenes, go/no-go engine, session recorder
     scoring/                   # pure TS: indicators, thresholds.v0.json, tests
@@ -334,14 +335,14 @@ adhdcheck/
  | apps/web route handlers (Vercel)                                     |
  |   validate (packages/contracts) -> score (packages/scoring)          |
  |   -> ScoreResult v1 -> save                                          |
- |   /api/stripe/* (Checkout, Portal, webhook)    Resend emails         |
+ |   /api/stripe/* (Checkout, webhook)            Resend emails         |
  +----------+-----------------------------------------------------------+
             |
             v
  +----------------------------------------------+     +----------------+
  | Supabase, Frankfurt: Postgres + Auth + RLS    |     | Stripe (test)  |
  | parents, children, sessions, trials, scores,  |     +----------------+
- | missions, subscriptions                       |
+ | missions, report_purchases                    |
  +----------------------------------------------+
 ```
 
@@ -392,9 +393,12 @@ Copied from 03 section 11. These contracts freeze at M1 (H+6, 03 section 12) and
     }
   ],
   "off_target_taps": [{ "t_ms": 0, "during": "isi | stimulus" }],
-  "calibration": { "median_rt_ms": 0, "n": 0 }
+  "calibration": { "median_rt_ms": 0, "n": 0 },
+  "minigames": [{ "id": "star-path | bridge-wait | treasure-choice | route-planner", "version": "0.1.0", "params": {}, "trials": [], "results": {} }]
 }
 ```
+
+`minigames` is optional (PC-02, accepted 2026-10-20): the results of the mini-games played after Lantern Watch, at most one entry per game, each with `trials` or `results` or both. Lantern Watch and its calibration stay in `trials`, `calibration` and `task`.
 
 ### 7.2 `ScoreResult` v1 (scoring to dashboard)
 
@@ -422,16 +426,16 @@ Copied from 03 section 11. These contracts freeze at M1 (H+6, 03 section 12) and
 }
 ```
 
-Usage constraint on `recommendations` (NFR-52, FR-26): it holds the fixed next-step sentence only, never mission IDs chosen from the score. The contracts above are copied unchanged from 03; the changes proposed by 04 (rename to `next_step_text`, optional `minigames` field) are listed in section 10.3 and are not applied.
+Usage constraint on `recommendations` (NFR-52, FR-26): it holds the fixed next-step sentence only, never mission IDs chosen from the score. The contracts above are copied from 03; the changes proposed by 04 are listed in section 10.3. Applied: the optional `minigames` field of `SessionMetrics` (PC-02, accepted 2026-10-20). Not applied: the rename to `next_step_text` (PC-01).
 
 ### 7.3 HTTP endpoints
 
 | Endpoint | Method | Purpose | Source |
 |---|---|---|---|
 | `/api/sessions` | POST | Receive `SessionMetrics`, validate, score, save, return `ScoreResult` | 03 sections 10 and 12 |
-| `/api/stripe/checkout` | POST | Create Checkout Session (subscription) | 03 section 6 (path name PROPOSAL) |
-| `/api/stripe/portal` | POST | Create Customer Portal session | 03 section 6 |
-| `/api/stripe/webhook` | POST | Receive Stripe events, verify signature | 03 section 6 (path name PROPOSAL) |
+| `/api/stripe/checkout` | POST | Create a Checkout Session, `mode: "payment"`, for one report (D-05b, FR-45) | 03 section 6 |
+| `/api/stripe/webhook` | POST | Receive Stripe events (`checkout.session.completed`, `checkout.session.async_payment_succeeded`), verify signature, mark paid, email the link to the report (FR-47) | 03 section 6 |
+| `/api/reports/<sessionId>` | GET | The report PDF for the parent who paid for it (FR-48) | D-05, D-05b |
 
 ## 8. Data model
 
@@ -445,7 +449,7 @@ Table names from 03 section 5. Column lists are PROPOSAL, derived from the contr
 | `trials` | Raw trials of a session | `session_id`, `parent_id`, `i`, `block`, `type`, `stimulus_onset_ms`, `responded`, `rt_ms`, `outcome`, `x`, `y`; off-target taps in `sessions` jsonb or a separate table (R3 decides) | Via `parent_id` |
 | `scores` | `ScoreResult` per session | `session_id`, `parent_id`, `scoring_method`, `validated`, `indicators` (jsonb), `flags`, `band`, `data_quality` (jsonb), `reasons`, `recommendations`, `disclaimer`, `created_at` | Via `parent_id` |
 | `missions` | Missions chosen by the parent | `id`, `child_id`, `parent_id`, `mission_key` (catalogue item), `chosen_by` (`parent`; `professional` later), `status` (`todo`, `done`), `created_at`, `done_at` | Via `parent_id` |
-| `subscriptions` | Stripe subscription state | `parent_id`, `stripe_subscription_id`, `status`, `updated_at` | Own rows; written by webhook with service role |
+| `report_purchases` | One-off report purchases (D-05b), one row per Stripe Checkout Session | `parent_id`, `session_id`, `stripe_checkout_session_id` (unique), `status` (`pending`, `paid`), `lang`, `paid_at`, `emailed_at` | Own rows; written by checkout and webhook with service role (migration `20261021130000_report_purchases.sql`). The former `subscriptions` table is dropped (`20261021140000_drop_subscriptions.sql`) |
 
 ## 9. Regulatory and ethical constraints
 
@@ -469,6 +473,9 @@ Table names from 03 section 5. Column lists are PROPOSAL, derived from the contr
 | D-01 | Positioning and class: orientation and referral support, never diagnosis; target IIa maximum, IIa expected, class I only if the output carries no diagnostic or referral purpose | **DECIDED** | Hatem, 2026-10-19 | R-01 to R-05 below |
 | D-02 | Missions are chosen by the parent (later a professional) as general wellbeing activities, never auto-prescribed from the score | **DECIDED** | Hatem, 2026-10-19 | R-03 |
 | D-03a | Result headlines: "A professional assessment is recommended" / "No specific follow-up indicated by this activity"; no ADHD probability, likelihood or severity on the parent screen | **DECIDED** | Hatem, 2026-10-19 | D-03 (supporting lines) |
+| D-05 | What is behind the paywall: everything is free for parents (games, result card, next step, missions, progress, deletion) except the detailed report. Decision A: the headline and the next step are always free on screen (FR-48). The payment model is set by D-05b (it replaced the subscription first planned here) | **DECIDED** | Hatem, 2026-10-20 | None |
+| D-05b | The detailed PDF report costs 9.99 EUR, one-off payment per report, not a subscription (Stripe Checkout `mode: "payment"`, FR-45). After payment the parent who paid gets an email with a link to the report behind login; the PDF is not attached and the email holds no child data (R3-D1 / D-05c, below). The download from the parent page stays available to the payer (FR-47, FR-48, FR-51) | **DECIDED** | Hatem, 2026-10-20 | Product name (D-08); email wording approval (Person 4) |
+| D-05c (R3-D1) | The paid report email carries a link to the report inside the app, behind login, and nothing else: no attachment, no nickname, headline, band, score or disclaimer. R3-D1 / D-05c DECIDED, Hatem, 2026-10-20: report email carries a link behind login, no attachment, no child data. Option A; the options of attaching the PDF with a recorded processor, region and consent (NFR-04) were not taken | **DECIDED** | Hatem, 2026-10-20 | Email wording approval (Person 4) |
 | D-18 | Hackathon scope is one web app only: the game runs inside it at `/play` in the tablet or phone browser; native mobile and tablet apps after the hackathon | **DECIDED** | Hatem, 2026-10-19 | None |
 | D-17 | Web first, with camera and microphone in the browser game (section 4.1c), processed on the device, aggregates only; native mobile app later | **DECIDED** | Hatem, 2026-10-19 | Whether camera and microphone features ever feed the score (06 proposes no); legal review of the open points in 4.1c |
 
@@ -488,7 +495,6 @@ Residual questions from D-01 and D-02:
 |---|---|---|---|---|
 | D-03 | Supporting lines under each headline (FR-34) and disclaimer wording | `TODO.md`; 03 section 11.2 | TODO (R5) | M2, TODO |
 | D-04 | Threshold values in `thresholds.v0.json`, minimum trial count, anticipation rule | 03 section 4 (no verified norms) | TODO (R2) | M2, TODO |
-| D-05 | Price, subscription content, what is behind the paywall (FR-48 proposal) | `TODO.md` | TODO (R4 with R5) | M3, TODO |
 | D-06 | Gadget: which one, and is it a medical device | `TODO.md` | TODO | After the hackathon |
 | D-07 | UI language(s) | none sourced | TODO | M1, TODO |
 | D-08 | Product name: "ADHD Check" names the condition; with the orientation positioning it also reads as a diagnostic promise, and it rules out the class I fallback (02 Part 2.7, 2.8) | depends on R-01 | TODO | Before the pitch, TODO |
@@ -509,7 +515,7 @@ Proposed by `research/04-game-design-symptom-mapping.md`. The contracts in secti
 | ID | Proposed change | Reason given in 04 | Impact | Owner | Status |
 |---|---|---|---|---|---|
 | PC-01 | Rename `ScoreResult.recommendations` to `next_step_text`, filled only with the fixed orientation sentence; no mission IDs from the score | Missions are chosen by the parent or a professional, never auto-prescribed (04 section 0; Rule 22, 02 Part 2.4 item 4) | `ScoreResult` to a new version; scorer, API and dashboard updates; FR-26 then tests the new field | Interface owner (TODO: name), with R2 and R3 | PROPOSED |
-| PC-02 | Add an optional `minigames` array to `SessionMetrics` (one entry per mini-game with `id`, `version`, `params` and `trials` or `results`). The same 04 block also proposes optional `motion` (device-motion RMS per mini-game) and `context` (`on_adhd_medication`, `age_band`) objects | Mini-games 0 and 2 to 5 need somewhere to put their data (04 section 5) | Additive; zod schema update. `context.on_adhd_medication` is health data about the child and needs R5 privacy review (NFR-01, NFR-04) before acceptance | Interface owner (TODO: name), with R1, R2 and R3 | PROPOSED |
+| PC-02 | Add an optional `minigames` array to `SessionMetrics` (one entry per mini-game with `id`, `version`, `params` and `trials` or `results`). The same 04 block also proposes optional `motion` (device-motion RMS per mini-game) and `context` (`on_adhd_medication`, `age_band`) objects | Mini-games 0 and 2 to 5 need somewhere to put their data (04 section 5) | Additive; zod schema update. `context.on_adhd_medication` is health data about the child and needs R5 privacy review (NFR-01, NFR-04) before acceptance | Interface owner (TODO: name), with R1, R2 and R3 | ACCEPTED by Hatem, 2026-10-20, for the `minigames` array; applied in `packages/contracts/src/session-metrics.ts` (`MiniGameEntrySchema`), `sessions.minigames` (migration `20261022110000_minigames_and_link_grace.sql`, not applied by the PR). `motion` and `context` are NOT accepted yet: `context` needs the R5 privacy review above, and no device motion is captured |
 | PC-03 | Additive indicators in `ScoreResult.indicators` (d', anticipation rate, ex-Gaussian parameters) and `vigilance_change` split into named parts | 04 section 7.2 | Additive; scorer and dashboard | Interface owner (TODO: name), with R2 | PROPOSED |
 | PC-04 | Optional `camera` and `microphone` blocks in `SessionMetrics` (fields and units in 06), v1 unchanged | D-17; 06 | Additive; strict schema; R5 privacy review | Interface owner (TODO: name), with R2 and R3 | PROPOSED |
 
@@ -542,6 +548,8 @@ Proposed by `research/04-game-design-symptom-mapping.md`. The contracts in secti
 | Version | Date | Change |
 |---|---|---|
 | 0.1 | 2026-10-19 | First draft from research 01, 02, 03 and `TODO.md`, including the team decision of 2026-10-19 on positioning (orientation, IIa maximum). |
+| 0.3 | 2026-10-20 | R3-D1 / D-05c decided (Hatem): the report email carries a link behind login, no attachment, no child data. FR-47, FR-50, FR-51 and D-05b adjusted. |
+| 0.2 | 2026-10-20 | D-05b decided (Hatem): 9.99 EUR one-off per report, emailed to the parent who paid. FR-45, FR-47, FR-48 rewritten, FR-46 retired, FR-51 added, `subscriptions` replaced by `report_purchases`. |
 
 ## 13. Contradictions found between sources (for the team to resolve)
 1. 03 section 8 suggests stating "not a medical device" in the demo; 02 Part 2.7 shows that statement holds only for a wellness game that names no disease. While the output or the product name refers to ADHD, do not say "not a medical device".

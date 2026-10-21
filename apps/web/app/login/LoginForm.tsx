@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { pathAfterLogin } from "../../lib/safe-next";
 import { S } from "../parent/strings";
 import { buttonPrimary, field, postJson } from "../parent/_components/shell";
 
@@ -19,7 +20,7 @@ export function LoginForm() {
     const body = { email: String(form.get("email") ?? ""), password: String(form.get("password") ?? "") }; // check-secrets: allow
     try {
       const res = await postJson(mode === "login" ? "/api/auth/login" : "/api/auth/signup", body);
-      if (res.ok && mode === "login") return router.replace("/parent");
+      if (res.ok && mode === "login") return router.replace(pathAfterLogin(window.location.search));
       if (res.ok) {
         setMode("login");
         return setNote(S.login.checkEmail);

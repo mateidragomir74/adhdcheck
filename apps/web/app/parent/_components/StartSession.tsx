@@ -3,10 +3,11 @@
 import QRCode from "qrcode";
 import { useEffect, useRef, useState } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { getSessionResult, onNewScore, type SessionResult } from "@/lib/data/parent";
+import { getSessionResult, hasProcessingConsent, onNewScore, type SessionResult } from "@/lib/data/parent";
 import { createPlayLink, type Consent } from "@/lib/play-client";
 import { S } from "../strings";
-import { buttonPrimary, buttonQuiet } from "./shell";
+import { ProcessingConsent } from "./ProcessingConsent";
+import { buttonPrimary, buttonQuiet, Loading } from "./shell";
 
 const CONSENT_OFF: Consent = { camera: false, microphone: false };
 
@@ -29,11 +30,24 @@ export function StartSession({
   const [failed, setFailed] = useState(false);
   // FR-70: both off until the parent switches one on, again for every new link.
   const [consent, setConsent] = useState<Consent>(CONSENT_OFF);
+  // NFR-04: null while checking. A failed check asks again rather than skipping the step.
+  const [agreed, setAgreed] = useState<boolean | null>(null);
   const known = useRef(new Set(knownSessions));
   const onResultRef = useRef(onResult);
   useEffect(() => {
     onResultRef.current = onResult;
   }, [onResult]);
+
+  useEffect(() => {
+    let live = true;
+    hasProcessingConsent(client).then(
+      (yes) => live && setAgreed(yes),
+      () => live && setAgreed(false),
+    );
+    return () => {
+      live = false;
+    };
+  }, [client]);
 
   useEffect(() => {
     if (!link) return;
@@ -73,6 +87,9 @@ export function StartSession({
       setBusy(false);
     }
   }
+
+  if (agreed === null) return <Loading />;
+  if (!agreed) return <ProcessingConsent client={client} onDone={() => setAgreed(true)} />;
 
   if (!link)
     return (

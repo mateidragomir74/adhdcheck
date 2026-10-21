@@ -77,9 +77,9 @@ Status values: `todo`, `doing`, `done`. Update in the same PR that changes the s
 | FR-41 | Delete child and all data | R3 | Must | doing | https://github.com/mateidragomir74/adhdcheck/pull/4, https://github.com/mateidragomir74/adhdcheck/pull/7 |
 | FR-42 | Landing page with QR | R4 | Should | doing | landing page: https://github.com/mateidragomir74/adhdcheck/pull/1 (merged); waitlist storage: https://github.com/mateidragomir74/adhdcheck/pull/9 |
 | FR-43 | Parent questionnaire (NICHQ Vanderbilt), permission TODO | R4 with R5 | Should | todo | |
-| FR-45 | Stripe Checkout subscription | R4 | Should | doing | API: https://github.com/mateidragomir74/adhdcheck/pull/10 |
-| FR-46 | Customer Portal | R4 | Should | doing | API: https://github.com/mateidragomir74/adhdcheck/pull/10 |
-| FR-47 | Stripe webhook | R4 | Should | doing | https://github.com/mateidragomir74/adhdcheck/pull/10 |
+| FR-45 | Stripe Checkout, one-off report purchase 9.99 EUR (D-05b) | R4 | Should | doing | API: https://github.com/mateidragomir74/adhdcheck/pull/10; one-off: branch `feat/D-05b-one-off-report-email` |
+| FR-46 | Customer Portal (retired with D-05b) | R4 | n/a | retired | |
+| FR-47 | Stripe webhook: mark paid once, email the report (D-05b) | R4 | Should | doing | https://github.com/mateidragomir74/adhdcheck/pull/10; one-off: branch `feat/D-05b-one-off-report-email` |
 | FR-48 | Result and next step never paywalled | R4 | Must | doing | https://github.com/mateidragomir74/adhdcheck/pull/14 |
 | FR-50 | Emails without result data | R4 | Should | todo | |
 | FR-55 | Demo seed, 4 weeks | R3 with R2 | Must | doing | https://github.com/mateidragomir74/adhdcheck/pull/7, https://github.com/mateidragomir74/adhdcheck/pull/8 (synthetic scores until the scoring rules exist; packages/scoring is a stub) |
@@ -118,7 +118,7 @@ From 03 section 9; timing TODO (03 suggests about 3 minutes for the live flow).
 - [ ] Show the headline wording and the disclaimer; point out that no probability or severity is shown (FR-34, NFR-53).
 - [ ] Open the next-step page and the clinician summary (FR-35).
 - [ ] Show the 4-week progress chart and parent-chosen missions (FR-37, FR-38).
-- [ ] Subscribe with Stripe test checkout, open the portal (FR-45, FR-46).
+- [ ] Buy one report with Stripe test checkout and show the email with the link to the report behind login (FR-45, FR-47, FR-51; the PDF is not attached, R3-D1).
 - [ ] Show the email that arrived, with no result data in it (FR-50).
 - [ ] Timing slide: "we measure variability, not absolute speed" (03 section 9 item 5).
 - [ ] Regulatory slide: intended purpose (DRAFT), expected class IIa, design constraints, validation plan (02 section 2).

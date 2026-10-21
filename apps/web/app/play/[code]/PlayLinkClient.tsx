@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState, type Ref } from "react";
 import { resolvePlayLink, uploadSession, type Consent } from "@/lib/play-client";
+import { createUnlockedAudioContext } from "@/lib/audio-unlock";
 import { runPlayFlow, type Screen } from "./flow";
-import { sessionGame } from "./game";
+import { sessionGame, type SessionGameRun } from "./game";
 import { PLAY_STRINGS } from "./strings";
 
 // FR-14: full screen and the current orientation, both asked inside the start tap (browsers only allow
@@ -36,11 +37,15 @@ export function PlayLinkClient({ code }: { code: string }) {
   const [screen, setScreen] = useState<Screen>({ kind: "checking" });
   const gameRef = useRef<HTMLDivElement>(null);
   const startRef = useRef<() => void>(() => {});
-  const started = useRef(false);
+  // Created inside the start tap (a user gesture) and handed to the game, which reuses it.
+  const audioRef = useRef<AudioContext | null>(null);
 
+  // R3-L1: leaving the page (or React dev mode running the effect twice) stops the game that was started and
+  // ends the flow, so no render loop, WebGL context, AudioContext or listener is left running and a return
+  // to the page starts one clean instance.
   useEffect(() => {
-    if (started.current) return; // React dev mode runs effects twice; the flow must run once.
-    started.current = true;
+    const controller = new AbortController();
+    let run: SessionGameRun | undefined;
     const game = sessionGame;
     void runPlayFlow(code, {
       resolve: (c) => resolvePlayLink(c),
@@ -48,17 +53,30 @@ export function PlayLinkClient({ code }: { code: string }) {
         ? (childId, consent) => {
             const el = gameRef.current;
             if (!el) throw new Error("game container missing");
-            return game(el, childId, consent);
+            run = game(el, childId, consent, audioRef.current ?? undefined);
+            return run.promise;
           }
         : null,
       waitForStart: () => new Promise<void>((resolve) => (startRef.current = resolve)),
       upload: (c, metrics) => uploadSession(c, metrics),
       waitForNetwork,
-      show: setScreen,
-    });
+      show: (next) => {
+        if (!controller.signal.aborted) setScreen(next);
+      },
+    }, controller.signal);
+    return () => {
+      controller.abort();
+      run?.destroy();
+      if (!run) void audioRef.current?.close().catch(() => undefined); // never handed to a game
+      audioRef.current = null;
+    };
   }, [code]);
 
-  return <PlayScreen screen={screen} gameRef={gameRef} onStart={() => startRef.current()} />;
+  return <PlayScreen screen={screen} gameRef={gameRef} onStart={() => {
+        audioRef.current ??= createUnlockedAudioContext();
+        startRef.current();
+      }}
+    />;
 }
 
 // FR-70: the child-friendly explanation, shown only when the parent switched a sensor on.

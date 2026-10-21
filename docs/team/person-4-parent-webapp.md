@@ -1,6 +1,6 @@
 # Person 4: Parent web app
 
-You build every page the parent sees: the landing page, sign-up, the child profile, the consent screen, the QR that starts a game, the result card, missions, the progress chart, the subscription and the email.
+You build every page the parent sees: the landing page, sign-up, the child profile, the consent screen, the QR that starts a game, the result card, missions, the progress chart, the one-off paid report and the email.
 
 ## Read first (30 minutes)
 
@@ -24,7 +24,7 @@ You build every page the parent sees: the landing page, sign-up, the child profi
 | 3 | Consent screen before play: camera and microphone toggles, both off by default | No camera or microphone request happens before a toggle is switched on |
 | 4 | Result card: exactly one of the two fixed headlines, then the next step to a professional, same visual weight for both outcomes | Walking skeleton: QR, play, result card (milestone M2, H+12) |
 | 5 | Missions chosen by the parent, progress chart over the seeded 4 weeks | The chart shows the demo data |
-| 6 | Stripe test mode: Checkout subscription, Customer Portal, webhook handled with Person 3. The result and next step are never behind the paywall. | A test card subscribes and the portal opens |
+| 6 | Stripe test mode: Checkout one-off payment of 9.99 EUR per report (D-05b), webhook handled with Person 3, the report emailed to the parent who paid. The result and next step are never behind the paywall. | A test card buys the report and it arrives by email |
 | 7 | Email via Resend with no result data in it; landing page with the QR for the jury | The email arrives; the landing page passes the screenshot check |
 
 ## Rules for you

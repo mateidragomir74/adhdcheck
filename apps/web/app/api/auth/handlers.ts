@@ -1,4 +1,5 @@
 import type { EmailOtpType, SupabaseClient } from "@supabase/supabase-js";
+import { safeNextPath } from "../../../lib/safe-next";
 
 // Parent auth with Supabase Auth (FR-30), server side. The pages that call these are Person 4's.
 // Answers carry an error code only; emails and passwords are never logged.
@@ -95,8 +96,4 @@ export async function handleConfirm(request: Request, { auth }: Deps): Promise<R
   return Response.redirect(new URL("/?auth_error=confirm_failed", url.origin), 303);
 }
 
-// Only a path on this site: "/x" yes; "//host", "/\host", "https://host" and "x" no.
-export function safeNextPath(next: string | null): string {
-  if (!next || !next.startsWith("/") || next.startsWith("//") || next.startsWith("/\\")) return "/";
-  return next;
-}
+export { safeNextPath };

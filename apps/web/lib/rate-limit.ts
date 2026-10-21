@@ -8,9 +8,12 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 // address, far above one child finishing a session and well below a burst.
 export const SESSIONS_RATE_LIMIT = { limit: 10, windowSeconds: 60 };
 
+export type RateLimitRule = { limit: number; windowSeconds: number };
+
 export interface RateLimiter {
-  // true when the request may go on, false when the limit is reached.
-  take(key: string): Promise<boolean>;
+  // true when the request may go on, false when the limit is reached. rule: this call's own limit and window
+  // instead of the limiter's default (the weekly email allows 1 a week from a limiter set to 10 a minute).
+  take(key: string, rule?: RateLimitRule): Promise<boolean>;
 }
 
 // Key for one client: scope plus a hash of its address. The address itself is never stored.
@@ -26,11 +29,11 @@ export function createSupabaseRateLimiter(
   { limit, windowSeconds }: { limit: number; windowSeconds: number },
 ): RateLimiter {
   return {
-    async take(key) {
+    async take(key, rule) {
       const { data, error } = await client.rpc("take_rate_limit", {
         p_bucket: key,
-        p_limit: limit,
-        p_window_seconds: windowSeconds,
+        p_limit: rule?.limit ?? limit,
+        p_window_seconds: rule?.windowSeconds ?? windowSeconds,
       });
       if (error) throw new Error(`take_rate_limit failed: ${error.message}`);
       return data === true;

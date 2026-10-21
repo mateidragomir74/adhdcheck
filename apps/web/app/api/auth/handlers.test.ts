@@ -189,7 +189,22 @@ describe("safeNextPath", () => {
     ["//evil.example", "/"],
     ["/\\evil.example", "/"],
     ["https://evil.example", "/"],
+    [`/${String.fromCharCode(9)}/evil.example`, "/"],
+    [`/${String.fromCharCode(13, 10)}/evil.example`, "/"],
+    ["javascript:alert(1)", "/"],
+    ["/x?y=1#z", "/x?y=1#z"],
   ])("%s -> %s", (input, expected) => {
     expect(safeNextPath(input)).toBe(expected);
   });
+});
+
+describe("R6-1 handleConfirm never redirects off this site", () => {
+  it.each(["/%09/evil.example", "/%0A/evil.example", "/%0D%0A/evil.example", "/%09%5Cevil.example", "//evil.example", "https://evil.example"])(
+    "next=%s lands on this origin",
+    async (next) => {
+      const { auth } = fakeAuth();
+      const res = await handleConfirm(new Request(`http://localhost/api/auth/confirm?token_hash=abc&type=email&next=${next}`), { auth }); // check-secrets: allow
+      expect(new URL(res.headers.get("location") as string).origin).toBe("http://localhost");
+    },
+  );
 });

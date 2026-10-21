@@ -29,6 +29,26 @@ describe("SupabasePlayLinkStore", () => {
     });
   });
 
+  it("NFR-04: finds the parent's consent to one text version, read from processing_consents", async () => {
+    const calls: unknown[][] = [];
+    const chain = (data: unknown[]) => {
+      const q = {
+        select: (...a: unknown[]) => (calls.push(["select", ...a]), q),
+        eq: (...a: unknown[]) => (calls.push(["eq", ...a]), q),
+        limit: (...a: unknown[]) => (calls.push(["limit", ...a]), Promise.resolve({ data, error: null })),
+      };
+      return q;
+    };
+    const from = vi.fn().mockReturnValueOnce(chain([{ id: 1 }])).mockReturnValueOnce(chain([]));
+    const store = createSupabasePlayLinkStore({ from } as unknown as SupabaseClient);
+
+    expect(await store.hasProcessingConsent(PARENT, "v1")).toBe(true);
+    expect(await store.hasProcessingConsent(PARENT, "v1")).toBe(false);
+    expect(from).toHaveBeenCalledWith("processing_consents");
+    expect(calls).toContainEqual(["eq", "parent_id", PARENT]);
+    expect(calls).toContainEqual(["eq", "version", "v1"]);
+  });
+
   it("answers false when the child is not the parent's", async () => {
     const { client } = fakeClient({ data: false, error: null });
     const expiresAt = new Date();

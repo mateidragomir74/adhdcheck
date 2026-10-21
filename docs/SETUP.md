@@ -60,16 +60,36 @@ Copy `.env.example` to `apps/web/.env.local` (gitignored) and fill the values th
 | `SUPABASE_SERVICE_ROLE_KEY` | server only |
 | `STRIPE_SECRET_KEY` | server only, Stripe test mode |
 | `STRIPE_WEBHOOK_SECRET` | server only |
-| `STRIPE_PRICE_ID` | server only: the test-mode recurring price used by `POST /api/stripe/checkout` (product and price: decision D-05) |
-| `RESEND_API_KEY` | server only |
+| `STRIPE_PRICE_ID` | server only: the test-mode **one-time** price of the detailed report, 9.99 EUR (D-05b), used by `POST /api/stripe/checkout` in `mode: "payment"`. A recurring price is refused by Stripe in that mode |
+| `RESEND_API_KEY` | server only: sends the email with the link to the paid report (FR-51; the report itself is not attached). Optional: without it the purchase is still recorded and the parent downloads the report |
+| `SITE_URL` | server only: the public address of the site without a trailing slash, for example `https://your-production-domain`. It is the only source of the Stripe success and cancel URLs and of the dashboard link in emails; the request origin is never used. Without it checkout answers 503 and parent emails with a link are skipped |
+| `EMAIL_FROM` | server only: the sender of every email (FR-50 messages and the paid report), for example `ADHDCheck <reports@your-verified-domain>`. It must be on a domain verified in Resend: `onboarding@resend.dev` only delivers to the Resend account owner's own address (https://resend.com/docs/knowledge-base/403-error-resend-dev-domain). Optional: unset outside production the Resend test sender is used; unset in production no email is sent (this variable was called `REPORT_FROM_EMAIL`) |
 | `DEMO_PARENT_EMAIL` | server only: the account that may use Reset demo (`POST /api/demo/reset`) |
-| `GAME_HARNESS` | server only: set to `1` to serve the dev game pages under `/play` (bridge-wait, star-path, treasure-choice, route-planner) in production; read at build, off by default |
+| `GAME_HARNESS` | server only: set to `1` to serve the dev game pages under `/play` (bridge-wait, star-path, treasure-choice, route-planner, wake-fireflies, lantern-watch) in production; read at build, off by default |
 
 The names follow the usual convention of each provider; confirm them against the provider quickstart when you wire the service.
 
+## 4b. Stripe and Resend for the paid report (D-05b), for the owner to configure
+
+Decision D-05b (Hatem, 2026-10-20): the detailed PDF report costs 9.99 EUR, paid once per report. The parent who paid gets an email with a link to the report behind login (R3-D1, DECIDED, Hatem, 2026-10-20: no attachment, no child data in the email); the PDF is downloaded on the parent page.
+
+1. **Stripe product and price (test mode).** Create a product for the detailed report with a **one-time** price of 9.99 EUR. Put the price id (`price_...`) in `STRIPE_PRICE_ID`.
+2. **Webhook endpoint.** In the Stripe Dashboard (test mode), Developers, Webhooks, add the endpoint `https://<production domain>/api/stripe/webhook` and select exactly these events:
+   - `checkout.session.completed`
+   - `checkout.session.async_payment_succeeded`
+   - `checkout.session.async_payment_failed` (a delayed payment failed: the purchase is marked failed and a new checkout is allowed; [Stripe: fulfil orders](https://docs.stripe.com/checkout/fulfillment))
+   - `checkout.session.expired` (the Checkout was not completed in time: the purchase is marked expired; [Stripe: event types](https://docs.stripe.com/api/events/types))
+
+   Copy its signing secret into `STRIPE_WEBHOOK_SECRET`. The subscription events (`customer.subscription.*`) are no longer used and can be removed from an existing endpoint. Locally: `stripe listen --forward-to localhost:3000/api/stripe/webhook --events checkout.session.completed,checkout.session.async_payment_succeeded,checkout.session.async_payment_failed,checkout.session.expired` prints a test signing secret.
+3. **Resend.** Verify the sending domain at https://resend.com/domains, then set `RESEND_API_KEY` and `EMAIL_FROM` (an address on that domain). With `onboarding@resend.dev` only the Resend account owner receives the email; Resend refuses other recipients with a 403, which the webhook logs as `email_rejected` without retrying.
+4. **Site address.** Set `SITE_URL` to the production address (Vercel environment variable).
+5. **Database.** Apply `supabase/migrations/20261021130000_report_purchases.sql`, then `supabase/migrations/20261021140000_drop_subscriptions.sql`, then `supabase/migrations/20261022090000_waitlist_new_row.sql`, then `supabase/migrations/20261022100000_purchase_not_paid_and_rate_limit_windows.sql` to the live project (`npx supabase db push`). Until the first one is applied, checkout and the report download answer 503.
+
+What the webhook does: it verifies the signature on the raw body (400 otherwise), marks the purchase paid once (only when `payment_status` is `paid` and the Checkout's one line item is `STRIPE_PRICE_ID`, read with `listLineItems`; any other item is logged at error level as `webhook needs review` with the Checkout id and nothing is recorded, so check the Stripe Dashboard for those; a replayed or concurrent event changes nothing), emails a link to the report page (built from `SITE_URL`, so `SITE_URL` must be set for the email to go out; the webhook logs `site_url_not_configured` otherwise) to the address the parent signed up with (Supabase auth), and records `emailed_at`. The email has fixed text and the link only: no PDF, nickname, result or disclaimer. A visitor who is not logged in is sent to the login page and returned to the linked page after login. A `checkout.session.completed` still `unpaid` records the pending purchase from the metadata. The email carries a Resend idempotency key per Checkout Session, so two deliveries of one event send one email. A temporary email failure answers 500 so that Stripe retries; a missing email configuration or a permanent refusal answers 200 with a logged code (never the address).
+
 ## 5. Status of the stubs
 
-- The **waitlist** (`POST /api/waitlist`) stores the address (lower case, once) and the page language in the server-only `waitlist` table. No confirmation email is sent yet (Resend, TODO). The address is never logged (only language and time).
+- The **waitlist** (`POST /api/waitlist`) stores the address (lower case, once) and the page language in the server-only `waitlist` table. A confirmation email (Resend, FR-50) is sent after the answer, only for an address that was not on the list yet and within a daily cap on confirmation emails (placeholder value, TODO). The address is never logged (only language and time).
 - `scoreSession` returns `insufficient_data` for every session until Person 2 writes the rules. No thresholds exist yet.
 - The **demo seed** (`seed_demo`, used by Reset demo) writes synthetic scores in SQL, not scorer output, and its reason lines are placeholders until Person 4 supplies the text.
 - `/play` draws a blank "Luma" canvas. No game logic.
@@ -91,8 +111,8 @@ The names follow the usual convention of each provider; confirm them against the
 | @supabase/supabase-js | 2.118.0 | not added yet | MIT | npm registry |
 | @mediapipe/tasks-vision | 1.1.1 | not added yet | Apache-2.0 | npm registry |
 | @ricky0123/vad-web | 0.0.31 | not added yet | ISC | npm registry |
-| stripe | 23.0.0 | not added yet | MIT | npm registry |
-| resend | 6.34.1 | not added yet | MIT | npm registry |
+| stripe | 23.0.0 | `^22.6.2` | MIT | npm registry |
+| resend | 6.34.1 | `^6.34.1` | MIT | npm registry |
 | qrcode | 1.5.4 | not added yet | MIT | npm registry |
 | pnpm | 12.14.0 | not used | MIT | npm registry |
 
@@ -105,6 +125,8 @@ To add a package not yet present, run `npm install <name> --workspace <folder>` 
 The landing page merged first (PR 1) with a `package-lock.json` and npm scripts, so the team keeps npm. npm workspaces give one root install with no extra tool. With workspaces there is a single lockfile at the root, so the landing page's own `apps/web/package-lock.json` was removed.
 
 ## 7. Known traps and fixes
+
+- **Database migrations are applied by hand, never with `supabase db push`.** The live project records only three migration versions in its history although later ones were applied by hand, so a push would fail. Apply the file in the SQL editor (or `apply_migration`) before merging the code that needs it. Details: `supabase/migrations/README.md`. Pending: `20261022110000_minigames_and_link_grace.sql`.
 
 | Trap | Fix |
 |---|---|

@@ -1,6 +1,7 @@
 import { ScoreResultSchema, type ScoreResult } from "@adhdcheck/contracts";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { isMissionKey } from "../missions";
+import { PROCESSING_CONSENT_VERSION } from "../processing-consent";
 
 // Data for the parent pages (Person 4). Pass the logged-in parent's client (lib/supabase/server.ts in
 // Server Components, lib/supabase/client.ts in Client Components): RLS returns only their own rows.
@@ -29,7 +30,7 @@ export type MissionRow = {
   done_at: string | null;
 };
 
-const SESSION_COLUMNS =
+export const SESSION_COLUMNS =
   "id, child_id, started_at, duration_ms, device, scores (scoring_method, validated, indicators, flags, band, data_quality, reasons, recommendations, disclaimer)";
 const MISSION_COLUMNS = "id, child_id, mission_key, status, created_at, done_at";
 
@@ -62,12 +63,32 @@ export function toSessionResult(row: SessionRow): SessionResult {
   };
 }
 
-// FR-31: nickname and birth year only (NFR-01). Returns null when the input is not acceptable.
-export function validateNewChild(input: unknown): { nickname: string; birth_year: number } | null {
+// Intended purpose: children aged 6 to 12 (docs/02 section 2). The add-child form uses the same bounds.
+export const MIN_AGE = 6;
+export const MAX_AGE = 12;
+
+// The longest nickname; the database check (migration 20261021120000_child_bounds) uses the same number.
+// Placeholder: TODO texts owner confirms (docs/02 FR-31).
+export const MAX_NICKNAME_LENGTH = 40;
+
+// With the birth year only, the accepted years are (current year - 12) to (current year - 6), the same
+// range the database trigger children_age_range enforces (migration 20261021100000_child_age_range).
+export function birthYearRange(now: Date = new Date()) {
+  const year = now.getUTCFullYear();
+  return { min: year - MAX_AGE, max: year - MIN_AGE };
+}
+
+// FR-31: nickname and birth year only (NFR-01). Returns null when the input is not acceptable,
+// including a birth year outside the 6 to 12 age range (checked on the server, not only in the form).
+export function validateNewChild(input: unknown, now: Date = new Date()): { nickname: string; birth_year: number } | null {
   const { nickname, birth_year } = (input ?? {}) as { nickname?: unknown; birth_year?: unknown };
-  if (typeof nickname !== "string" || nickname.trim().length === 0) return null;
+  if (typeof nickname !== "string") return null;
+  const name = nickname.trim();
+  if (name.length === 0 || name.length > MAX_NICKNAME_LENGTH) return null;
   if (typeof birth_year !== "number" || !Number.isInteger(birth_year)) return null;
-  return { nickname: nickname.trim(), birth_year };
+  const { min, max } = birthYearRange(now);
+  if (birth_year < min || birth_year > max) return null;
+  return { nickname: name, birth_year };
 }
 
 export async function listChildren(client: SupabaseClient): Promise<Child[]> {
@@ -111,11 +132,56 @@ export function onNewScore(client: SupabaseClient, onScore: (sessionId: string) 
   };
 }
 
-// FR-45, FR-48: the parent's Stripe subscription status ("active", "trialing", "past_due", "canceled", ...),
-// or null before any checkout. Never gate the result card, next step or deletion on it.
-export async function getSubscriptionStatus(client: SupabaseClient): Promise<string | null> {
-  const result = await client.from("subscriptions").select("status").maybeSingle();
-  return check<{ status: string } | null>(result, "read subscription")?.status ?? null;
+// NFR-04: whether the parent has agreed to the current consent text, and record that they do (RLS: the
+// row is always the caller's own, and cannot be changed afterwards). POST /api/play-links checks the same.
+export async function hasProcessingConsent(client: SupabaseClient): Promise<boolean> {
+  const result = await client.from("processing_consents").select("id").eq("version", PROCESSING_CONSENT_VERSION).limit(1);
+  return check<{ id: number }[]>(result, "read consent").length > 0;
+}
+
+export async function giveProcessingConsent(client: SupabaseClient): Promise<void> {
+  const result = await client.from("processing_consents").insert({ version: PROCESSING_CONSENT_VERSION });
+  check(result, "record consent");
+}
+
+// D-05b, FR-48: the purchase of one report by the logged-in parent (report_purchases, RLS: own rows only),
+// the paid one first, or null before any checkout. Never gate the result card, next step or deletion on it.
+export type ReportPurchase = { status: "pending" | "paid"; emailed_at: string | null };
+export async function getReportPurchase(client: SupabaseClient, sessionId: string): Promise<ReportPurchase | null> {
+  const result = await client
+    .from("report_purchases")
+    .select("status, emailed_at")
+    .eq("session_id", sessionId)
+    .in("status", ["pending", "paid"]) // failed and expired attempts are history, not the state of the report
+    .order("paid_at", { ascending: false, nullsFirst: false })
+    .limit(1);
+  return check<ReportPurchase[]>(result, "read report purchase")[0] ?? null;
+}
+
+// R3-P1: the Stripe Checkout Session ids of this parent's pending purchases of one report, newest first, so a
+// second checkout can be refused or resumed. RLS: own rows only.
+export async function listPendingCheckoutIds(client: SupabaseClient, sessionId: string): Promise<string[]> {
+  const result = await client
+    .from("report_purchases")
+    .select("stripe_checkout_session_id")
+    .eq("session_id", sessionId)
+    .eq("status", "pending")
+    .order("created_at", { ascending: false })
+    .limit(5); // a Checkout lives 24 hours; failed and expired rows are not listed, so this stays short
+  return check<{ stripe_checkout_session_id: string }[]>(result, "list pending checkouts").map((r) => r.stripe_checkout_session_id);
+}
+
+// R5-3: the Stripe Checkout Session id of this parent's newest failed or expired purchase of one report, or null.
+// RLS: own rows only. It goes into the checkout idempotency key, so a new checkout after a failure is new to Stripe.
+export async function getLatestClosedCheckoutId(client: SupabaseClient, sessionId: string): Promise<string | null> {
+  const result = await client
+    .from("report_purchases")
+    .select("stripe_checkout_session_id")
+    .eq("session_id", sessionId)
+    .in("status", ["failed", "expired"])
+    .order("created_at", { ascending: false })
+    .limit(1);
+  return check<{ stripe_checkout_session_id: string }[]>(result, "latest closed checkout")[0]?.stripe_checkout_session_id ?? null;
 }
 
 // FR-37: missions are always chosen by the parent; nothing here reads a score (NFR-52).
