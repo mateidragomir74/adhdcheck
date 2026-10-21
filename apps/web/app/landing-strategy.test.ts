@@ -1,8 +1,10 @@
-// The landing page follows the team's go-to-market decision (pitch/icp-and-go-to-market.md, 20 Oct 2026) and claims
-// nothing the repo cannot back: every future item is a plan, no partnership, certification or validation is stated,
-// no new figure appears, and the page metadata says nothing the body does not.
+// The landing page follows the clinic strategy (pitch/clinic-strategy-2026-10-21.md, decided by Hatem, 21 Oct 2026) and
+// claims nothing the repo cannot back: the clinic sending the link and the doctor receiving the result are described as how
+// the service will work in a pilot, never as a live feature; no doctor portal is implied; no figure, partnership, CE marking,
+// ISO 13485 compliance or clinical validation is stated; the result goes to the doctor only with the parent's consent; and the
+// page metadata says nothing the body does not.
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -11,7 +13,7 @@ import { Landing } from "./_components/Landing";
 import { findBannedWording, findPresentTenseRegulatory, findUnnegated, metadataClaimsMissing } from "./landing-copy";
 
 const here = (rel: string) => fileURLToPath(new URL(rel, import.meta.url));
-const md = readFileSync(here("../../../pitch/icp-and-go-to-market.md"), "utf8");
+const md = readFileSync(here("../../../pitch/clinic-strategy-2026-10-21.md"), "utf8");
 
 function strings(value: unknown, out: string[] = []): string[] {
   if (typeof value === "string") out.push(value);
@@ -31,129 +33,148 @@ function renderedText(): string {
       .replace(/&#x27;/g, "'"),
   );
 }
+const sentences = (text: string) => text.split(/(?<=[.!?])\s+/);
 
-describe("landing page: the five target groups (pitch/icp-and-go-to-market.md, ICP table)", () => {
-  const groups = {
-    en: [/parents of children aged 6.12/i, /ADHD associations/i, /teachers/i, /nurses/i, /GPs/i],
-    ro: [/părinții copiilor de 6.12 ani/i, /asociațiile pentru ADHD/i, /profesorii/i, /asistenții medicali/i, /medicii de familie/i],
+describe("the decision is recorded as a source file", () => {
+  it("quotes Hatem's words verbatim, with date and decider", () => {
+    expect(md).toContain("21 Oct 2026");
+    expect(md).toContain("Decided by Hatem");
+    expect(md).toContain(
+      "the app is sold to the clinics: the parent when they book a appointment with the doctor they receive the link to register and to give the children to play the game and then the doctor get the survey completed clear to be used instead of wasting hours in answering or trying to get the information",
+    );
+  });
+  it("lists the open points the page depends on", () => {
+    for (const p of ['What "survey" means', "How the doctor receives the result", "Pricing for clinics", "MDR intended purpose", "GDPR"]) expect(md).toContain(p);
+  });
+  it("what it says about the repo is true: the questionnaire is only a proposal and no clinician area exists", () => {
+    const spec = readFileSync(here("../../../docs/02-specification-cahier-des-charges.md"), "utf8");
+    expect(spec).toMatch(/FR-43 \| Parent questionnaire \(PROPOSAL/);
+    expect(existsSync(here("./clinic"))).toBe(false);
+    expect(existsSync(here("./doctor"))).toBe(false);
+  });
+});
+
+describe("the four steps follow the decision: book, link, child plays, doctor receives the result before the visit", () => {
+  const order = {
+    en: [/book/i, /link/i, /plays?/i, /doctor/i],
+    ro: [/programeaz|programare/i, /link/i, /joac/i, /medic/i],
   } as const;
   for (const lang of ["en", "ro"] as const) {
-    it(`lists the five groups in the same order as the decision (${lang})`, () => {
-      const items = content[lang].audience.items;
-      expect(items).toHaveLength(5);
-      groups[lang].forEach((re, i) => expect(items[i]?.who).toMatch(re));
+    it(`has 4 steps in that order (${lang})`, () => {
+      const steps = content[lang].how.steps;
+      expect(steps).toHaveLength(4);
+      order[lang].forEach((re, i) => expect(`${steps[i]?.title} ${steps[i]?.body}`).toMatch(re));
+    });
+    it(`the last step says the result comes before the visit and only with the parent's consent (${lang})`, () => {
+      const last = content[lang].how.steps[3];
+      expect(`${last?.title} ${last?.body}`).toMatch(lang === "en" ? /before the (visit|appointment)/i : /înainte de (consult|vizit|programare)/i);
+      expect(`${last?.title} ${last?.body}`).toMatch(lang === "en" ? /consent/i : /acord|consim[tț]ământ/i);
     });
   }
+});
 
-  it("each group's reason comes from the decision file (key phrases found in the md)", () => {
-    for (const phrase of ["Of children aged 6 to 12", "they decide whether to seek an assessment", "reach and advise families", "notice attention problems in class", "waiting room before the visit", "first orientation", "saves time", "A first orientation before referral"])
-      expect(md).toContain(phrase);
-    const en = content.en.audience.items.map((i) => i.why).join(" ");
-    for (const phrase of ["decide whether to seek an assessment", "reach and advise families", "notice attention problems in class", "waiting room before the visit", "first orientation", "saves time", "first orientation before a referral"])
-      expect(en).toContain(phrase);
+describe("features that do not exist yet are written as a plan, never as live", () => {
+  // A sentence about the clinic or doctor sending or receiving must carry a plan or negation marker.
+  const ACTOR = /\b(clinic|clinics|doctor|doctors|practice)\b|\b(clinica|clinicile|medicul|medicii|doctorul)\b/i;
+  const ACT = /\b(sends?|receives?|gets?|sees|opens?|logs? in)\b|\b(trimite|primește|primesc|vede)\b/i;
+  const MARKER = /\b(will|plan|planned|pilot|not live|not yet|no|does not|never|only if|only with|if the parent|consent|agrees?|whether|va|vor|nu|încă|doar|numai|dacă|ne propunem)\b|acord|dac[ăa]/i;
+  // A question asserts nothing; its answer is checked.
+  const GATE = (s: string) => !s.trim().endsWith("?") && ACTOR.test(s) && ACT.test(s) && !MARKER.test(s);
+
+  it("the gate can fail", () => {
+    expect(GATE("The doctor receives the result.")).toBe(true);
+    expect(GATE("The clinic sends the parent a link.")).toBe(true);
+    expect(GATE("In the pilot the doctor will receive the result.")).toBe(false);
   });
 
-  it("M-4: the associations line is a plan (where we plan to offer the app), not a claim that we advertise today", () => {
-    expect(content.en.audience.items[1]?.why).toMatch(/where we plan to offer the app/);
-    expect(content.en.audience.items[1]?.why).not.toMatch(/advertise/i);
-    expect(content.ro.audience.items[1]?.why).toMatch(/ne propunem să oferim aplicația/);
-    expect(content.ro.audience.items[1]?.why).not.toMatch(/cunoscută/);
-    expect(md).toContain("In each country we advertise in"); // the source line the plan wording rests on
+  it("no sentence of the page states a clinic or doctor action as a live fact", () => {
+    for (const lang of ["en", "ro"] as const) {
+      expect(strings(content[lang]).flatMap(sentences).filter(GATE)).toEqual([]);
+    }
+    expect(sentences(renderedText()).filter(GATE)).toEqual([]);
   });
 
-  it("the page says parents come first and that other uses come later, as the md answers the intended-purpose question", () => {
-    expect(md).toContain("Parents first; professional and school use come later");
-    expect(content.en.audience.note).toMatch(/Parents come first/);
-    expect(content.en.audience.note).toMatch(/comes later/);
+  const IMPLIES = /\b(portal|dashboard|(?<!into )account|login|log in|logs in|platform|panou|cont|portalul|platforma)\b/i;
+  const ABOUT = /(doctor|clinic|medic)/i;
+  const NEG = /\b(no|not|does not|never|nu|nicio|nici|fără|will|plan|pilot|va|vor)\b/i;
+  it("no doctor portal, clinic dashboard or clinic account is implied as existing", () => {
+    for (const lang of ["en", "ro"] as const) {
+      for (const s of strings(content[lang]).flatMap(sentences)) {
+        if (ABOUT.test(s) && IMPLIES.test(s)) expect(s).toMatch(NEG);
+      }
+    }
+    const planted = "The doctor logs in to a dashboard.";
+    expect(ABOUT.test(planted) && IMPLIES.test(planted) && !NEG.test(planted)).toBe(true); // the check can fail
+  });
+
+  it("the page says plainly that the clinic link and the doctor view are not live yet, and that today the app is used by parents", () => {
+    expect(content.en.how.note).toMatch(/not live yet/i);
+    expect(content.en.how.note).toMatch(/today/i);
+    expect(content.ro.how.note).toMatch(/nu sunt încă active/i);
+    expect(content.en.result.note).toMatch(/no doctor (portal|account|access)/i);
+    expect(content.ro.result.note).toMatch(/nu există/i);
+  });
+
+  it("the parent's consent is stated in the parents section, the doctor section and the privacy section", () => {
+    for (const lang of ["en", "ro"] as const) {
+      const re = lang === "en" ? /consent|agree/i : /acord|consim[tț]ământ/i;
+      expect(strings(content[lang].parents).join(" ")).toMatch(re);
+      expect(strings(content[lang].result).join(" ")).toMatch(re);
+      expect(strings(content[lang].privacy).join(" ")).toMatch(re);
+    }
   });
 });
 
-describe("landing page: the go-to-market is written as a plan, never as a fact", () => {
-  const FUTURE_EN = /^(We plan|We want|We expect)/;
-  const FUTURE_RO = /^(Ne propunem|Vrem|Ne așteptăm)/;
-  it("every plan step starts with a plan verb, in both languages", () => {
-    content.en.plan.steps.forEach((st) => expect(st).toMatch(FUTURE_EN));
-    content.ro.plan.steps.forEach((st) => expect(st).toMatch(FUTURE_RO));
-    expect(content.en.plan.intro).toMatch(FUTURE_EN);
-    expect(content.ro.plan.intro).toMatch(FUTURE_RO);
+describe("what the doctor gets describes only what the app produces today (FR-33, FR-34, FR-48)", () => {
+  it("lists the fixed sentences, the game measures, the session date and the disclaimer; no questionnaire, no diagnosis", () => {
+    const en = strings(content.en.result).join(" ");
+    expect(en).toContain("A professional assessment is recommended.");
+    expect(en).toContain("No specific follow-up indicated by this activity.");
+    expect(en).toContain("This is not a diagnosis. Only a professional can make one.");
+    expect(en).toMatch(/game measures/i);
+    expect(en).toMatch(/session date/i);
+    expect(en).not.toMatch(/questionnaire|survey|vanderbilt|completed form/i);
+    expect(strings(content.ro.result).join(" ")).not.toMatch(/chestionar|sondaj/i);
+  });
+  it("the FAQ says a parent questionnaire is not part of the app today", () => {
+    const q = content.en.faq.items.find((f) => /questionnaire/i.test(f.q));
+    expect(q?.a).toMatch(/not part of the app today/i);
+  });
+});
+
+describe("nothing invented", () => {
+  it("no figure on the page except the age range 6 to 12 and the 10 to 15 minute game; no percentage, price or time-saved claim", () => {
+    for (const lang of ["en", "ro"] as const) {
+      const text = clean(strings({ ...content[lang], footer: { ...content[lang].footer, event: "" } }).join(" ")); // the hackathon line carries the year 2026
+      const figures = new Set([...text.matchAll(/\d+/g)].map((m) => m[0]));
+      expect([...figures].filter((f) => !["6", "12", "10", "15"].includes(f))).toEqual([]);
+      expect(text).not.toMatch(/\d\s*%/);
+      expect(text).not.toMatch(/\bhours?\b|\bore\b|saves? time|minutes saved|economis|câștig(ă|i) timp|wast/i);
+    }
+    expect(renderedText()).not.toMatch(/\d\s*%|\d+[.,]\d{2}\s*(EUR|€)/);
   });
 
-  it("says what the md says: Romanian associations and leading doctors, ISO 13485, CE marking under the EU MDR for the European market starting in Romania, class IIa expected", () => {
-    for (const phrase of ["Romanian ADHD associations", "ISO 13485", "CE marking under EU MDR", "class IIa", "expected", "European market, starting in Romania"]) expect(md).toContain(phrase);
-    const en = content.en.plan.steps.join(" ");
-    for (const phrase of ["Romanian ADHD associations", "leading doctors on ADHD in Romania", "ISO 13485", "CE marking", "MDR", "European market, starting in Romania", "We expect the app to be a class IIa"]) expect(en).toContain(phrase);
-    const ro = content.ro.plan.steps.join(" ");
-    for (const phrase of ["ISO 13485", "marcajul CE", "MDR", "piața europeană, începând cu România", "clasa IIa"]) expect(ro).toContain(phrase);
-  });
-
-  it("the closing note keeps the pilot disclaimers: not done yet, not CE marked, thresholds not checked in a clinical study", () => {
-    expect(content.en.plan.note).toMatch(/None of this is done yet/);
-    expect(content.en.plan.note).toMatch(/not CE marked/);
-    expect(content.en.plan.note).toMatch(/not yet been checked in a clinical study/);
-    expect(content.ro.plan.note).toMatch(/Nimic din toate acestea nu este încă făcut/);
-    expect(content.ro.plan.note).toMatch(/nu are marcaj CE/);
-  });
-
-  it("the gate catches a regulatory or partnership claim written as a fact (it can fail), and passes the page", () => {
-    expect(findPresentTenseRegulatory(["ADHDCheck is CE marked and ISO 13485 certified."])).not.toEqual([]);
-    expect(findPresentTenseRegulatory(["The app is a class IIa medical device."])).not.toEqual([]);
-    expect(findPresentTenseRegulatory(["Dezvoltat conform ISO 13485."])).not.toEqual([]);
-    expect(findPresentTenseRegulatory(["We plan to work under a quality management system per ISO 13485."])).toEqual([]);
-    expect(findPresentTenseRegulatory(["Pilot in development. Not CE marked yet."])).toEqual([]);
+  it("states no regulatory status as a fact and no existing partnership", () => {
     for (const lang of ["ro", "en"] as const) expect(findPresentTenseRegulatory(strings(content[lang]))).toEqual([]);
     expect(findPresentTenseRegulatory([renderedText()])).toEqual([]);
-  });
-
-  it("M-7: a negation must come BEFORE the status and govern it; a plan marker must come before it too (the gate can fail on these)", () => {
-    expect(findPresentTenseRegulatory(["It is CE marked, not a toy."])).not.toEqual([]);
-    expect(findPresentTenseRegulatory(["No doubt: it is ISO 13485 certified."])).not.toEqual([]);
-    expect(findPresentTenseRegulatory(["Este marcat CE, nu un jucărie."])).not.toEqual([]);
-    expect(findPresentTenseRegulatory(["ADHDCheck is CE marked and we plan more."])).not.toEqual([]);
-    expect(findPresentTenseRegulatory(["It is not CE marked yet."])).toEqual([]);
-    expect(findPresentTenseRegulatory(["Nu are încă marcaj CE."])).toEqual([]);
-    expect(findPresentTenseRegulatory(["Pilot, fără marcaj CE."])).toEqual([]);
-    expect(findPresentTenseRegulatory(["We expect the app to be a class IIa medical device."])).toEqual([]);
-  });
-
-  it("claims no existing partnership, in any sentence of either language or of the rendered page", () => {
     const re = /\b(partnered|partnership with|partners? with|we work with|we are working with|in partnership|lucrăm cu|colaborăm cu|în parteneriat cu|parteneri(i)? noștri)\b/i;
     for (const text of [...strings(content.en), ...strings(content.ro), renderedText()]) expect(text).not.toMatch(re);
-    // the one "partner" is a search ("we are seeking a clinical partner"), in the closing note only
-    expect(content.en.plan.note).toMatch(/we are seeking a clinical partner/);
-    expect(md).not.toMatch(/already (partner|work)/i);
-  });
-});
-
-describe("landing page: nothing invented", () => {
-  it("the new sections carry no figure other than 6 to 12 (age range) and 13485 (the standard's number), both from the md", () => {
-    for (const lang of ["en", "ro"] as const) {
-      const t = content[lang];
-      const text = clean(strings([t.audience, t.plan]).join(" "));
-      const figures = new Set([...text.matchAll(/\d+/g)].map((m) => m[0]));
-      expect(figures).toEqual(new Set(["6", "12", "13485"]));
-    }
-    expect(md).toContain("aged 6 to 12");
-    expect(md).toContain("ISO 13485");
+    expect(renderedText()).not.toMatch(/clinically (validated|proven|tested)|validat clinic|certified|certificat/i);
   });
 
-  it("the whole page still states the price only once, as 9.99 EUR, and no other price or percentage was added", () => {
-    const text = renderedText();
-    const prices = [...text.matchAll(/\d+[.,]\d{2}\s*(?:EUR|€)/g)].map((m) => m[0].replace(",", "."));
-    expect(new Set(prices)).toEqual(new Set(["9.99 EUR"]));
-    expect(text).not.toMatch(/\d\s*%/);
+  it("the device class is not stated on the page", () => {
+    expect(renderedText()).not.toMatch(/class II|clasa II/i);
   });
 
   for (const lang of ["ro", "en"] as const) {
-    it(`the new strings pass the wording gate: no diagnosis, likelihood, severity, treatment, validation or accuracy claim (${lang})`, () => {
-      const t = content[lang];
-      const mine = strings([t.audience, t.plan, t.nav.who, t.faq.items.find((f) => /ADHDCheck/.test(f.q) && /pentru cine|who/i.test(f.q))]);
-      expect(mine.length).toBeGreaterThan(15);
-      expect(findBannedWording(mine)).toEqual([]);
-      expect(findUnnegated(mine)).toEqual([]);
+    it(`every string passes the wording gate (${lang})`, () => {
+      const all = strings(content[lang]);
+      expect(findBannedWording(all)).toEqual([]);
+      expect(findUnnegated(all)).toEqual([]);
     });
   }
 
-  it("the existing disclaimers are all still on the page (not a diagnosis, pilot, not CE marked)", () => {
+  it("the disclaimers are still on the page (not a diagnosis, pilot, not CE marked, thresholds not checked clinically)", () => {
     const text = renderedText();
     expect(text).toContain("Acesta nu este un diagnostic: doar un specialist poate pune unul.");
     expect(text).toContain("Nu are încă marcaj CE.");
@@ -163,35 +184,43 @@ describe("landing page: nothing invented", () => {
   });
 });
 
-describe("landing page: metadata claims nothing the body does not say", () => {
+describe("the page is clinic-first with a section for parents and a pilot call to action", () => {
+  it("the hero speaks to clinics and doctors", () => {
+    expect(content.en.hero.eyebrow).toMatch(/clinics/i);
+    expect(content.en.hero.title).toMatch(/before the appointment/i);
+    expect(content.ro.hero.eyebrow).toMatch(/clinici/i);
+  });
+  it("there is a parents section and the call to action is to become a pilot clinic, through the existing waitlist form", () => {
+    expect(content.en.parents.title).toMatch(/parents/i);
+    expect(content.en.final.formCta).toMatch(/pilot clinic/i);
+    expect(content.ro.final.formCta).toMatch(/clinic/i);
+    expect(readFileSync(here("./_components/Landing.tsx"), "utf8")).toContain('"/api/waitlist"');
+  });
+});
+
+describe("metadata claims nothing the body does not say", () => {
   const layout = readFileSync(here("./layout.tsx"), "utf8");
   const meta = layout.slice(layout.indexOf("export const metadata"), layout.indexOf("export const viewport"));
-  // the value of every `title:` and `description:` in the metadata object (page, description, social card title and description)
   const quoted = [...meta.matchAll(/(?:title|description):\s*"((?:[^"\\]|\\.)*)"/g)].map((m) => m[1] as string);
 
-  it("title, description and social card text are found (title, description, og title, og description)", () => {
+  it("title, description, og title and og description are found", () => {
     expect(quoted.length).toBeGreaterThanOrEqual(4);
   });
-
-  it("every word of the metadata, and every figure and named entity, appears in the Romanian page body", () => {
-    const body = renderedText();
-    expect(metadataClaimsMissing(quoted, body)).toEqual([]);
+  it("the metadata is written for clinics", () => {
+    expect(quoted.join(" ")).toMatch(/clinic/i);
   });
-
-  it("the check can fail: a planted claim the body never makes is reported", () => {
-    const body = renderedText();
-    expect(metadataClaimsMissing(["De la 15K EUR pentru clasa I."], body)).not.toEqual([]);
-    // M-7: whole words, not a five-letter prefix: "validat" must not be waved through by "validare"
-    expect(metadataClaimsMissing(["Validat clinic."], body)).not.toEqual([]);
-    expect(metadataClaimsMissing(["Un joc liniștit pentru copii."], body)).toEqual([]); // an inflection of a body word ("liniștită") still counts
-    expect(metadataClaimsMissing(["Certificat ISO 13485, validat clinic de 40 de medici."], body).length).toBeGreaterThan(0);
-    expect(metadataClaimsMissing(["Un joc de 10–15 minute pentru copii de 6–12 ani."], body)).toEqual([]);
+  it("every word and figure of the metadata appears in the Romanian page body", () => {
+    expect(metadataClaimsMissing(quoted, renderedText())).toEqual([]);
   });
-
+  it("the check can fail", () => {
+    const body = renderedText();
+    expect(metadataClaimsMissing(["Economisește 3 ore pe consult."], body)).not.toEqual([]);
+    expect(metadataClaimsMissing(["Validat clinic, certificat ISO 13485."], body)).not.toEqual([]);
+  });
   it("the metadata passes the wording gate and states no certification, partnership or validation", () => {
     expect(findBannedWording(quoted)).toEqual([]);
     expect(findUnnegated(quoted)).toEqual([]);
     expect(findPresentTenseRegulatory(quoted)).toEqual([]);
-    for (const q of quoted) expect(q).not.toMatch(/ISO|13485|clasa IIa|partener|parteneri/i);
+    for (const q of quoted) expect(q).not.toMatch(/ISO|13485|clasa IIa|partener|parteneri|ore\b|hours/i);
   });
 });

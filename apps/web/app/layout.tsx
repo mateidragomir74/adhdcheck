@@ -14,13 +14,13 @@ const nunito = Nunito({
 });
 
 export const metadata: Metadata = {
-  title: "ADHDCheck · Dă-i telefonul. Primești un pas următor clar.",
+  title: "ADHDCheck · Pentru clinici: informația înainte de consult",
   description:
-    "Un joc liniștit de 10–15 minute cu Luma, pentru copii de 6–12 ani. La final afli dacă merită să vorbești cu un specialist despre atenția și concentrarea copilului. Nu este un diagnostic.",
+    "Pilot pentru clinici: copilul joacă 10–15 minute acasă, iar medicul primește rezultatul înainte de consult, doar cu acordul părintelui. Pentru copii de 6–12 ani. Nu este un diagnostic.",
   openGraph: {
-    title: "ADHDCheck",
+    title: "ADHDCheck pentru clinici",
     description:
-      "Un joc de 10–15 minute care te ajută să decizi dacă merită să vorbești cu un specialist. Pentru părinții copiilor de 6–12 ani. Pilot, fără marcaj CE.",
+      "Pilot: părintele programează consultul, clinica trimite un link, copilul joacă acasă, iar medicul primește rezultatul înainte de consult, cu acordul părintelui. Fără marcaj CE.",
     type: "website",
   },
 };
